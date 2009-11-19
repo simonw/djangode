@@ -54,6 +54,16 @@ function respond(res, body, content_type, status) {
 }
 exports.respond = respond;
 
+exports.redirect = redirect = function(res, location, status) {
+    status = status || 301;
+    res.sendHeader(status || 200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Location': location
+    });
+    res.sendBody('Redirecting...');
+    res.finish();
+}
+
 exports.extractPost = function(req, callback) {
     req.setBodyEncoding('utf-8');
     var body = '';
