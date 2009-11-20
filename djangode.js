@@ -8,6 +8,7 @@ function extname(path) {
 }
 
 exports.serveFile = function(req, res, filename) {
+    // TODO: Ensure security against directory traversal attacks
     var body, headers;
     var content_type = mime.lookup(extname(filename));
     var encoding = (content_type.slice(0,4) === 'text' ? 'utf8' : 'binary');
@@ -43,6 +44,10 @@ exports.serveFile = function(req, res, filename) {
     });
 }
 
+exports.serve = function(app, port) {
+    sys.puts('Server on http://127.0.0.1:' + port + '/');
+    return http.createServer(app).listen(port);
+}
 
 function respond(res, body, content_type, status) {
     content_type = content_type || 'text/html';
