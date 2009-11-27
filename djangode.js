@@ -39,7 +39,7 @@ exports.serveFile = function(req, res, filename) {
     }
     loadResponseData(function() {
         res.sendHeader(status, headers);
-        res.sendBody(body);
+        res.sendBody(body, encoding);
         res.finish();
     });
 }
