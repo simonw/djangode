@@ -25,7 +25,7 @@ exports.serveFile = function(req, res, filename) {
             body = data;
             headers = [
                 ['Content-Type', content_type],
-                ['Content-Length', encodeURIComponent(body).replace(/%../g, 'x').length]
+                ['Content-Length', encoding === 'utf8' ? encodeURIComponent(body).replace(/%../g, 'x').length : body.length]
             ];
             sys.puts("static file " + filename + " loaded");
             callback();
