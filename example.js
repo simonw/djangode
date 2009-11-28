@@ -8,7 +8,7 @@ var app = dj.makeApp([
                 <li><a href="/error">Error page with stacktrace</a></li> \
                 <li><a href="/404">Default 404</a></li> \
                 <li><a href="/redirect">Redirect back to /</a></li> \
-                <li><a href="/static/hello.txt">Static hello.txt</a></li> \
+                <li><a href="/static-demo/hello.txt">Static hello.txt</a></li> \
             </ul> \
         ');
     }],
