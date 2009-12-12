@@ -2,6 +2,46 @@ var sys = require('sys');
 process.mixin(GLOBAL, require('../utils/test').dsl);
 process.mixin(GLOBAL, require('./template_defaults'));
 
+testcase('add')
+    test('should add correctly', function () {
+        assertEquals(6, filters.add(4, 2));
+        assertEquals('', filters.add('a', 2));
+        assertEquals('', filters.add(2, 'a'));
+    });
+testcase('addslashes')
+    test('should add slashes correctly', function () {
+        assertEquals('he said \\"she said\\"', filters.addslashes('he said \"she said\"'));
+        assertEquals('6', filters.addslashes(6));
+    });
+testcase('capfirst')
+    test('should capitalize first letter correctly', function () {
+        assertEquals('Somewhere over the rainbow', filters.capfirst('somewhere over the rainbow'));
+        assertEquals('6', filters.capfirst(6));
+    });
+testcase('center')
+    test('center value', function () {
+        assertEquals('     centered     ', filters.center('centered', 18));
+        assertEquals('        6         ', filters.center(6, 18));
+    })
+testcase('cut')
+    test('remove unwanted letters', function () {
+        assertEquals('SomewhereOverTheRainbow', filters.cut('Somewhere Over The Rainbow', ' '));
+    });
+testcase('date')
+    test('correctly format Britneys birthdate', function () {
+        assertEquals('December 2, 1981', filters.date(new Date('12-02-1981'), 'F j, Y'));
+        assertEquals('', filters.date('hest', 'F j, Y'));
+    });
+testcase('default')
+    test('work as expected', function () {
+        assertEquals(6, filters['default'](false, 6));  
+    })
+testcase('default_if_none')
+    test('work as expected', function () {
+        assertEquals(false, filters.default_if_none(false, 6));  
+        assertEquals(6, filters.default_if_none(null, 6));  
+        assertEquals(6, filters.default_if_none(undefined, 6));  
+    })
 testcase('Test dictsort filter');
     test('should sort correctly', function () {
         var list = [
@@ -14,6 +54,7 @@ testcase('Test dictsort filter');
         assertEquals(before, list);
     });
 
+testcase('dictsortreversed filter');
     test('should sort correctly with dictsortreversed', function () {
         var list = [
             {'name': 'zed', 'age': 19},
@@ -23,6 +64,22 @@ testcase('Test dictsort filter');
         var before = list.slice(0);
         assertEquals([ list[0], list[2], list[1] ], filters.dictsortreversed(list, 'name') );
         assertEquals(before, list);
+    });
+
+testcase('divisibleby filter')
+    test('correctly determine if value is divisible with arg', function () {
+        assertEquals(true,  filters.divisibleby(4, 2));
+        assertEquals(false,  filters.divisibleby(5, 2));
+        assertEquals(false,  filters.divisibleby('hest', 2));
+        assertEquals(false,  filters.divisibleby('hest'));
+    });
+
+testcase('escapejs filter')
+    test('correctly escape value', function () {
+        assertEquals(escape('æøå&&Ø ""\n'), filters.escapejs('æøå&&Ø ""\n'));
+        assertEquals('6', filters.escapejs(6));
+        assertEquals('', filters.escapejs());
+
     });
 
 testcase('filesizeformat filter');
@@ -102,6 +159,56 @@ testcase('length_is filter')
         assertEquals(false, filters.length_is(16, 4));
         assertEquals(false, filters.length_is('hest'));
     });
+testcase('linebreaks')
+    test('linebreaks should be converted to <p> and <br /> tags.', function () {
+        assertEquals('<p>Joel<br />is a slug</p>', filters.linebreaks('Joel\nis a slug'));
+    });
+testcase('linebreaksbr')
+    test('linebreaks should be converted to <br /> tags.', function () {
+        assertEquals('Joel<br />is a slug.<br />For sure...', filters.linebreaksbr('Joel\nis a slug.\nFor sure...'));
+    });
+testcase('linenumbers')
+    test('should add linenumbers to text', function () {
 
+        var s = "But I must explain to you how all this mistaken idea of\n"
+            + "denouncing pleasure and praising pain was born and I will\n"
+            + "give you a complete account of the system, and expound the\n"
+            + "actual teachings of the great explorer of the truth, the \n"
+            + "aster-builder of human happiness. No one rejects, dislikes,\n"
+            + "or avoids pleasure itself, because it is pleasure, but because\n"
+            + "those who do not know how to pursue pleasure rationally\n"
+            + "encounter consequences that are extremely painful. Nor again\n"
+            + "is there anyone who loves or pursues or desires to obtain pain\n"
+            + "of itself, because it is pain, but because occasionally\n"
+            + "circumstances occur in which toil and pain can procure him\n"
+            + "some great pleasure. To take a trivial example, which of us"
+
+        var expected = "01. But I must explain to you how all this mistaken idea of\n"
+            + "02. denouncing pleasure and praising pain was born and I will\n"
+            + "03. give you a complete account of the system, and expound the\n"
+            + "04. actual teachings of the great explorer of the truth, the \n"
+            + "05. aster-builder of human happiness. No one rejects, dislikes,\n"
+            + "06. or avoids pleasure itself, because it is pleasure, but because\n"
+            + "07. those who do not know how to pursue pleasure rationally\n"
+            + "08. encounter consequences that are extremely painful. Nor again\n"
+            + "09. is there anyone who loves or pursues or desires to obtain pain\n"
+            + "10. of itself, because it is pain, but because occasionally\n"
+            + "11. circumstances occur in which toil and pain can procure him\n"
+            + "12. some great pleasure. To take a trivial example, which of us"
+
+        assertEquals(expected, filters.linenumbers(s));
+    });
+testcase('ljust')
+    test('should left justify value i correctly sized field', function () {
+        assertEquals('hest      ', filters.ljust('hest', 10)); 
+        assertEquals('', filters.ljust('hest')); 
+        assertEquals('he', filters.ljust('hest', 2)); 
+    });
+testcase('lower')
+    test('should lowercase value', function () {
+        assertEquals('somewhere over the rainbow', filters.lower('Somewhere Over the Rainbow'));
+        assertEquals('', filters.lower(19));
+    });
 
 run();
+

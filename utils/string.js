@@ -48,15 +48,6 @@ function center(s, width) {
 }
 exports.center = center;
 
-function html_escape(s) {
-    return s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/'/g, '&#39;')
-        .replace(/"/g, '&qout;');
-};
-exports.html_escape = html_escape;
 
 
 

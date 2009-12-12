@@ -7,12 +7,12 @@ var utils = require('../utils/utils');
 
 
 var filters = exports.filters = {
-    add: function (value, arg) { return value + arg; },
+    add: function (value, arg) { return (typeof value === 'number' && typeof arg === 'number') ? (value + arg) : ''; },
     addslashes: function (value, arg) { return utils.string.add_slashes(value.toString()); },
     capfirst: function (value, arg) { return utils.string.cap_first(value.toString()); },
     center: function (value, arg) { return utils.string.center(value.toString(), arg); },
-    cut: function (value, arg) { return value.toString().replace(arg, ""); },
-    date: function (value, arg) { return utils.date.date(arg, new Date(value)); },
+    cut: function (value, arg) { return value.toString().replace(new RegExp(arg, 'g'), ""); },
+    date: function (value, arg) { return (value instanceof Date) ? utils.date.date(arg, value) : ''; },
     'default': function (value, arg) { return value ? value : arg; },
     default_if_none: function (value, arg) { return (value === null || value === undefined) ? arg : value; },
 
@@ -33,7 +33,7 @@ var filters = exports.filters = {
         // TODO: Implement escaping/autoescaping correctly
         throw "escape() filter is not implemented";
     },
-    escapejs: function (value, arg) { return escape(value); },
+    escapejs: function (value, arg) { return escape(value || ''); },
     filesizeformat: function (value, arg) {
         var bytes = Number(value);
         if (isNaN(bytes)) { return "0 bytes"; }
@@ -60,7 +60,7 @@ var filters = exports.filters = {
         }
         return s;
     },
-    force_escape: function (value, arg) { return utils.string.html_escape(value.toString()); },
+    force_escape: function (value, arg) { return utils.html.escape(value.toString()); },
     get_digit: function (value, arg) {
         if (typeof value !== 'number' || typeof arg !== 'number' || typeof arg < 1) { return value; }
         var s = value.toString();
@@ -74,6 +74,24 @@ var filters = exports.filters = {
     last: function (value, arg) { return (value instanceof Array && value.length) ? value[value.length - 1] : ''; },
     length: function (value, arg) { return value.hasOwnProperty('length') ? value.length : 0; },
     length_is: function (value, arg) { return value.hasOwnProperty('length') && value.length === arg; },
+    linebreaks: function (value, arg) { return utils.html.linebreaks(value.toString()); },
+    linebreaksbr: function (value, arg) { return value.toString().replace(/\n/g, '<br />'); },
+    linenumbers: function (value, arg) {
+        var lines = value.toString().split('\n');
+        var zeroes = new Array(lines.length.toString().length + 1).join('0');
+        lines = lines.map( function (s, idx) {
+            var num = (idx + 1).toString();
+            return zeroes.slice(0, zeroes.length - num.length) + num + '. ' + s;
+        });
+        return lines.join('\n');
+    },
+    ljust: function (value, arg) {
+        if (typeof arg !== 'number') { return ''; }
+        if (arg <= value.length) { return value.slice(0, arg); }
+        var spaces = new Array(arg + 1).join(' ');
+        return value + spaces.slice(0, arg - value.length);
+    },
+    lower: function (value, arg) { return typeof value === 'string' ? value.toLowerCase() : ''; },
 
     sub: function (value, arg) { return value - arg; }
 };
