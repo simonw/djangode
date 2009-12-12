@@ -6,6 +6,8 @@
     <body>
         <h1>Ordering notice</h1>
 
+        {{ "test" }}
+
         <p>Dear {{person_name}},</p>
 
         <p>Thanks for placing an order from {{ company }}. It's scheduled to
@@ -15,7 +17,7 @@
 
         <ul>
         {% for item in item_list %}
-            <li>{{ forloop.revcounter0 }}: {{ item }}</li>
+            <li>{{ forloop.revcounter0 }}: {{ item }} {{ forloop.counter|add:"1000" }}</li>
         {% endfor %}
         </ul>
 

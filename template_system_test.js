@@ -1,6 +1,7 @@
 var sys = require('sys');
 var template = require('./template_system');
 process.mixin(GLOBAL, require('mjsunit'));
+process.mixin(GLOBAL, require('./template_system'));
 
 function run_testcase(testcase) {
     var test, fail, fail_cnt, success_cnt, context;
@@ -20,7 +21,9 @@ function run_testcase(testcase) {
                 testcase[test].call(testcase, context);
                 success_cnt++;
             } catch (e) {
-                if ('stack' in e && 'type' in e) {
+                if (typeof e === 'string') {
+                    fail = e;
+                } else if ('stack' in e && 'type' in e) {
                     fail = e.stack;
                 } else {
                     fail = e.toString();
@@ -50,7 +53,7 @@ cnt += run_testcase({
     title: 'Tokenizer tests',
 
     testTokenizer: function (t) {
-        var tokens = template.tokenize('Hest');
+        var tokens = tokenize('Hest');
         assertEquals(
             JSON.stringify([{type:'text', contents: 'Hest'}]),
             JSON.stringify(tokens)
@@ -58,9 +61,9 @@ cnt += run_testcase({
     },
 
     testNoEmptyTextTokens: function (t) {
-        var tokens = template.tokenize('{{tag}}');
+        var tokens = tokenize('{{tag}}');
         assertEquals(
-            JSON.stringify([{type:'variable', contents: ['tag']}]),
+            JSON.stringify([{type:'variable', contents: 'tag'}]),
             JSON.stringify(tokens)
         );
     },
@@ -68,16 +71,67 @@ cnt += run_testcase({
     testSplitToken: function (t) {
         assertArrayEquals(
             ['virker', 'det', 'her'],
-            template.split_token('  virker det her  ')
+            split_token('  virker det her  ')
         );
         assertArrayEquals(
             ['her', 'er', '"noget der er i qoutes"', 'og', 'noget', 'der', 'ikke', 'er'],
-            template.split_token('her er "noget der er i qoutes" og noget der ikke er')
+            split_token('her er "noget der er i qoutes" og noget der ikke er')
         );
 
-        // TODO: Is this the correct result for these two tests? 
-        assertArrayEquals( ['date:"F j, Y"'],     template.split_token('date:"F j, Y"'));
-        assertArrayEquals( ['date:', '"F j, Y"'], template.split_token('date: "F j, Y"'));
+        assertArrayEquals( ['date:"F j, Y"'], split_token('date:"F j, Y"'));
+        assertArrayEquals( ['date:', '"F j, Y"'], split_token('date: "F j, Y"'));
+    },
+
+    testSplit_filterexpression1: function (t) {
+        var actual = new FilterExpression("item|add");
+        var expected = { variable: 'item', filter_list: [ { name: 'add' } ] };
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression2: function (t) {
+        var actual = new FilterExpression("item.subitem|add|sub");
+        var expected = { variable: 'item.subitem', filter_list: [ { name: 'add' }, { name: 'sub' } ] };
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression3: function (t) {
+        var actual = new FilterExpression('item|add:"5"|sub:"2"');
+        var expected = { variable: 'item', filter_list: [ { name: 'add', arg: 5 }, { name: 'sub', arg: 2 } ] }
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression4: function (t) {
+        var actual = new FilterExpression('item|concat:"heste er naijs"');
+        var expected = { variable: 'item', filter_list: [ { name: 'concat', arg: 'heste er naijs' } ] }
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression5: function (t) {
+        var actual = new FilterExpression('person_name');
+        var expected = { variable: 'person_name', filter_list: [ ] }
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression6: function (t) {
+        var actual = new FilterExpression('"testheste er gode"');
+        var expected = { constant: 'testheste er gode', filter_list: [ ] }
+        assertEquals(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+    testSplit_filterexpression_error1: function (t) {
+        assertThrows("new FilterExpression('item |add:\"2\"');"); // should throw "expected pipe (no spaces allowed)"
+    },
+    testSplit_filterexpression_error2: function (t) {
+        assertThrows("new FilterExpression('item| add:\"2\"');"); // should throw "expected variable name (no spaces allowed)"
+    },
+    testSplit_filterexpression_error3: function (t) {
+        assertThrows("new FilterExpression('item|add :\"2\"');"); // should throw "expected pipe or colon (no spaces allowed)"
+    },
+    testSplit_filterexpression_error4: function (t) {
+        assertThrows("new FilterExpression('item|add: \"2\"');"); // should throw "expected doubleqoute (no spaces allowed or unqouted values allowed)"
+    },
+    testSplit_filterexpression_error5: function (t) {
+        assertThrows("new FilterExpression('item|add|:\"2\"|sub');"); // should throw "expected pipe or colon (no spaces allowed)"
     }
 });
 
