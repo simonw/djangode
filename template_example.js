@@ -1,12 +1,28 @@
 var posix = require('posix'),
     sys = require('sys'),
     dj = require('./djangode'),
-    template = require('./template_system');
+    template_system = require('./template/template');
 
+// load templates
+var templates = {};
+
+function parse_templates(path) {
+    posix.readdir(path).addCallback( function (files) {
+        files.forEach( function (file) {
+            posix.cat(path + '/' + file).addCallback(function (content) {
+                templates[path + '/' + file] = template_system.parse(content);
+            });
+        });
+    });
+}
+
+parse_templates('template-demo');
+
+// context to use when rendering template. In a real app this would likely come from a database
 var test_context = {
     person_name: 'Thomas Hest',
     company: 'Tobis A/S',
-    ship_date: '2. januar, 2010',
+    ship_date: new Date('12-02-1981'),
     item: 'XXX',
     item_list: [ 'Giraf', 'Fisk', 'Tapir'],
     ordered_warranty: true,
@@ -16,30 +32,20 @@ var test_context = {
     }
 };
 
+
+// make app
 var app = dj.makeApp([
-    ['^/raw$', function (req, res) {
-        posix.cat("templates/template.html").addCallback( function (content) {
-            dj.respond(res, content, 'text/plain');
-        });
+    ['^/(template-demo/.*)$', dj.serveFile],
+
+    ['^/template$', function (req, res) {
+        var html = templates["template-demo/template.html"].render(test_context);
+        dj.respond(res, html);
     }],
-    ['^/tokens$', function (req, res) {
-        posix.cat("templates/template.html").addCallback( function (content) {
-            var t = template.tokenize(content);
-            dj.respond(res, sys.inspect(t), 'text/plain');
-        });
-    }],
-    ['^/parsed$', function (req, res) {
-        posix.cat("templates/template.html").addCallback( function (content) {
-            var t = template.parse(content);
-            dj.respond(res, sys.inspect(t), 'text/plain');
-        });
-    }],
-    ['^/rendered$', function (req, res) {
-        posix.cat("templates/template.html").addCallback( function (content) {
-            var t = template.parse(content);
-            dj.respond(res, t.render(test_context), 'text/plain');
-        });
-    }],
+
+    ['^/text$', function (req, res) {
+        var html = templates["template-demo/template.html"].render(test_context);
+        dj.respond(res, html, 'text/plain');
+    }]
 ]);
 
 dj.serve(app, 8009);

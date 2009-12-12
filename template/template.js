@@ -1,9 +1,8 @@
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
-
 var sys = require('sys');
+var utils = require('../utils/utils');
 var template_defaults = require('./template_defaults');
-
 
 /***************** TOKENIZER ******************************/
 
@@ -297,23 +296,15 @@ exports.parse = function (input) {
 
 // TODO: Make this a property on a token class
 function split_token(input) {
-    var re = /([^\s"]*"(?:[^"\\]*(?:\\.[^"\\]*)*)"\S*|[^\s']*'(?:[^'\\]*(?:\\.[^'\\]*)*)'\S*|\S+)/g,
-        out = [],
-        m = false;
-
-    while (m = re.exec(input)) {
-        out.push(m[0]);
-    }
-    return out;
+    return utils.string.smart_split(input);
 }
-
 exports.split_token = split_token;
 
 
+// TODO: Node lists are always created by the Parser class, so it could extend the list with this method.
 function evaluate_node_list (node_list, context) {
     return node_list.reduce( function (p, c) { return p + c(context); }, '');
 }
-
 exports.evaluate_node_list = evaluate_node_list; 
 
 

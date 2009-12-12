@@ -2,11 +2,79 @@
 /*global require, process, exports */
 
 var sys = require('sys');
-var template = require('./template_system');
+var template = require('./template');
+var utils = require('../utils/utils');
 
 
 var filters = exports.filters = {
     add: function (value, arg) { return value + arg; },
+    addslashes: function (value, arg) { return utils.string.add_slashes(value.toString()); },
+    capfirst: function (value, arg) { return utils.string.cap_first(value.toString()); },
+    center: function (value, arg) { return utils.string.center(value.toString(), arg); },
+    cut: function (value, arg) { return value.toString().replace(arg, ""); },
+    date: function (value, arg) { return utils.date.date(arg, new Date(value)); },
+    'default': function (value, arg) { return value ? value : arg; },
+    default_if_none: function (value, arg) { return (value === null || value === undefined) ? arg : value; },
+
+    dictsort: function (value, arg) {
+        var clone = value.slice(0);
+        clone.sort(function (a, b) { return a[arg] < b[arg] ? -1 : a[arg] > b[arg] ? 1 : 0 });
+        return clone;
+    },
+
+    dictsortreversed: function (value, arg) {
+        var tmp = filters.dictsort(value, arg);
+        tmp.reverse();
+        return tmp;
+    },
+    divisibleby: function (value, arg) { return value % arg === 0; },
+
+    escape: function (value, arg) {
+        // TODO: Implement escaping/autoescaping correctly
+        throw "escape() filter is not implemented";
+    },
+    escapejs: function (value, arg) { return escape(value); },
+    filesizeformat: function (value, arg) {
+        var bytes = Number(value);
+        if (isNaN(bytes)) { return "0 bytes"; }
+        if (bytes <= 1) { return '1 byte'; }
+        if (bytes < 1024) { return bytes.toFixed(0) + ' bytes'; }
+        if (bytes < 1024 * 1024) { return (bytes / 1024).toFixed(1) + 'KB'; }
+        if (bytes < 1024 * 1024 * 1024) { return (bytes / (1024 * 1024)).toFixed(1) + 'MB'; }
+        return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+    },
+    first: function (value, arg) { return (value instanceof Array) ? value[0] : ""; },
+    fix_ampersands: function (value, arg) { return value.toString().replace('&', '&amp;'); },
+
+    floatformat: function (value, arg) {
+        var num = Number(value),
+            arg = arg || -1,
+            show_zeores = arg > 0,
+            fix = Math.abs(arg);
+        if (isNaN(num)) {
+            return '';
+        }
+        var s = num.toFixed(fix);
+        if (!show_zeores && Number(s) % 1 === 0) {
+            return num.toFixed(0);
+        }
+        return s;
+    },
+    force_escape: function (value, arg) { return utils.string.html_escape(value.toString()); },
+    get_digit: function (value, arg) {
+        if (typeof value !== 'number' || typeof arg !== 'number' || typeof arg < 1) { return value; }
+        var s = value.toString();
+        return Number(s[s.length - arg]);
+    },
+    iriencode: function (value, arg) {
+        // TODO: implement iriencode filter
+        throw "iri encoding is not implemented";
+    },
+    join: function (value, arg) { return (value instanceof Array) ? value.join(arg) : '' },
+    last: function (value, arg) { return (value instanceof Array && value.length) ? value[value.length - 1] : ''; },
+    length: function (value, arg) { return value.hasOwnProperty('length') ? value.length : 0; },
+    length_is: function (value, arg) { return value.hasOwnProperty('length') && value.length === arg; },
+
     sub: function (value, arg) { return value - arg; }
 };
 
@@ -153,3 +221,4 @@ var callbacks = exports.callbacks = {
         return nodes.IfNode(item_names, not_item_names, operator, node_list, else_list);
     }
 };
+
