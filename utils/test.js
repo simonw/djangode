@@ -129,6 +129,10 @@ exports.dsl = {
         } catch (e) {
             throw new AssertFailedException('Caught <' + e + '>');
         }
+    },
+    
+    fail: function (message) {
+        throw new AssertFailedException(message);
     }
 };
 

@@ -5,6 +5,7 @@ process.mixin(GLOBAL, require('./template_defaults'));
 testcase('add')
     test('should add correctly', function () {
         assertEquals(6, filters.add(4, 2));
+        assertEquals(6, filters.add('4', 2));
         assertEquals('', filters.add('a', 2));
         assertEquals('', filters.add(2, 'a'));
     });
@@ -208,6 +209,66 @@ testcase('lower')
     test('should lowercase value', function () {
         assertEquals('somewhere over the rainbow', filters.lower('Somewhere Over the Rainbow'));
         assertEquals('', filters.lower(19));
+    });
+testcase('make_list');
+    test('work as expected', function () {
+        assertEquals(['J', 'o', 'e', 'l'], filters.make_list('Joel'));
+        assertEquals(['1', '2', '3'], filters.make_list('123'));
+    });
+testcase('phone2numeric')
+    test('convert letters to numbers phone number style', function () {
+        assertEquals('800-2655328', filters.phone2numeric('800-COLLECT'));
+        assertEquals('2223334445556667q77888999z', filters.phone2numeric('abcdefghijklmnopqrstuvwxyz'));
+    });
+testcase('pluralize');
+    test('pluralize correctly', function() {
+        assertEquals('', filters.pluralize('sytten'));
+        assertEquals('', filters.pluralize(1));
+        assertEquals('s', filters.pluralize(2));
+        assertEquals('', filters.pluralize(1, 'es'));
+        assertEquals('es', filters.pluralize(2, 'es'));
+        assertEquals('y', filters.pluralize(1, 'y,ies'));
+        assertEquals('ies', filters.pluralize(2, 'y,ies'));
+    });
+testcase('pprint');
+    test("should not throw and not return ''", function () {
+        var response = filters.pprint( filters );
+        if (!response) { fail('response is empty!'); }
+    });
+testcase('random');
+    test('should return an element from the list', function () {
+        var arr = ['h', 'e', 's', 't'];
+        var response = filters.random(arr);
+        if (arr.indexOf(response) < 0) {
+            fail('returned element not in array!');
+        }
+    });
+    test('should return empty string when passed non array', function () {
+        assertEquals('', filters.random( 25 ));
+    });
+testcase('removetags');
+    test('should remove tags', function () {
+        assertEquals('jeg har en dejlig hest.', filters.removetags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>'));
+    });
+testcase('rjust')
+    test('should right justify value in correctly sized field', function () {
+        assertEquals('      hest', filters.rjust('hest', 10)); 
+        assertEquals('', filters.rjust('hest')); 
+        assertEquals('he', filters.rjust('hest', 2)); 
+    });
+testcase('slice')
+    var arr = [0,1,2,3,4,5,6,7,8,9];
+    test('slice should slice like python', function () {
+        assertEquals([0,1,2,3], filters.slice(arr, ":4"));
+        assertEquals([6,7,8,9], filters.slice(arr, "6:"));
+        assertEquals([2,3,4], filters.slice(arr, "2:5"));
+        assertEquals([2,5,8], filters.slice(arr, "2::3"));
+        assertEquals([2,5], filters.slice(arr, "2:6:3"));
+    });
+    test('slice should handle bad values', function () {
+        assertEquals([],        filters.slice(36, ":4"));
+        assertEquals([0,1,2,3,4,5,6,7,8,9], filters.slice(arr, 'hest'));
+        assertEquals([0,1,2,3,4,5,6,7,8,9], filters.slice(arr));
     });
 
 run();

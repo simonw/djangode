@@ -17,8 +17,9 @@ function tokenize(input) {
 
     function consume_until() {
         var next, s = '';
+        var slice = Array.prototype.slice;
         while (next = consume(re, input)) {
-            if (Array.prototype.slice.apply(arguments).indexOf(next) > -1) {
+            if (slice.apply(arguments).indexOf(next) > -1) {
                 return [s, next];
             }
             s += next;
@@ -101,7 +102,7 @@ process.mixin(Parser.prototype, {
 
             callback = this.callbacks[token.type];
             if (callback && typeof callback === 'function') {
-                node_list.push( callback.call(null, this, token) );
+                node_list.push( callback(this, token) );
             } else {
                 //throw parser_error('Unknown tag: ' + token[0]);
                 node_list.push( template_defaults.TextNode('[[ UNKNOWN ' + token.type + ' ]]'));
@@ -131,7 +132,7 @@ function normalize(value) {
 
     if (value === 'true') { return true; }
     if (value === 'false') { return false; }
-    if (/^\d/.exec(value)) { return Number(value); }
+    if (/^\d/.exec(value)) { return value - 0; }
 
     var isStringLiteral = /^(["'])(.*?)\1$/.exec(value);
     if (isStringLiteral) { return isStringLiteral.pop(); }

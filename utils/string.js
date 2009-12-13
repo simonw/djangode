@@ -44,7 +44,13 @@ function center(s, width) {
     if (s.length > width) { return s; }
     var right = Math.round((width - s.length) / 2);
     var left = width - (s.length + right);
-    return (new Array(left + 1)).join(' ') + s + (new Array(right + 1)).join(' ');
+    var out = '';
+
+    while (left--) { out += ' '; }
+    out += s;
+    while (right--) { out += ' '; }
+
+    return out;
 }
 exports.center = center;
 

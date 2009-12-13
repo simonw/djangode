@@ -102,8 +102,14 @@ testcase('Context test');
     });
 
     test('test push and pop', function (tc) {
-        tc.context.push();
         assertEquals(tc.plain.a, tc.context.get('a'));
+
+        tc.context.push();
+
+        assertEquals(tc.plain.a, tc.context.get('a'));
+        tc.context.set('a', tc.plain.a + 18);
+        assertEquals(tc.plain.a + 18, tc.context.get('a'));
+
         tc.context.pop();
         assertEquals(tc.plain.a, tc.context.get('a'));
     });

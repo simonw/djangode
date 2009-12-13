@@ -1,24 +1,59 @@
+"use strict";
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
 
-var sys = require('sys');
+var sys = require('sys')
+
 var template = require('./template');
 var utils = require('../utils/utils');
 
+/* TODO: Missing filters
+
+    Don't know how:
+        iriencode
+
+    Autoescaping:
+        escape
+        safe
+        safeseq
+
+    Not implemented (yet):
+        slugify
+        stringformat
+        striptags
+        time
+        timesince
+        timeuntil
+        title
+        truncatewords
+        truncatewords_html
+        unordered_list
+        upper
+        urlencode
+        urlize
+        urlizetrunc
+        wordcount
+        wordwrap
+        yesno
+    
+*/
 
 var filters = exports.filters = {
-    add: function (value, arg) { return (typeof value === 'number' && typeof arg === 'number') ? (value + arg) : ''; },
-    addslashes: function (value, arg) { return utils.string.add_slashes(value.toString()); },
-    capfirst: function (value, arg) { return utils.string.cap_first(value.toString()); },
-    center: function (value, arg) { return utils.string.center(value.toString(), arg); },
-    cut: function (value, arg) { return value.toString().replace(new RegExp(arg, 'g'), ""); },
+    add: function (value, arg) {
+        value = value - 0, arg = arg - 0;
+        return (isNaN(value) || isNaN(arg)) ? '' : (value + arg);
+    },
+    addslashes: function (value, arg) { return utils.string.add_slashes("" + value); },
+    capfirst: function (value, arg) { return utils.string.cap_first("" + value); },
+    center: function (value, arg) { return utils.string.center("" + value, arg); },
+    cut: function (value, arg) { return ("" + value).replace(new RegExp(arg, 'g'), ""); },
     date: function (value, arg) { return (value instanceof Date) ? utils.date.date(arg, value) : ''; },
     'default': function (value, arg) { return value ? value : arg; },
     default_if_none: function (value, arg) { return (value === null || value === undefined) ? arg : value; },
 
     dictsort: function (value, arg) {
         var clone = value.slice(0);
-        clone.sort(function (a, b) { return a[arg] < b[arg] ? -1 : a[arg] > b[arg] ? 1 : 0 });
+        clone.sort(function (a, b) { return a[arg] < b[arg] ? -1 : a[arg] > b[arg] ? 1 : 0; });
         return clone;
     },
 
@@ -35,7 +70,7 @@ var filters = exports.filters = {
     },
     escapejs: function (value, arg) { return escape(value || ''); },
     filesizeformat: function (value, arg) {
-        var bytes = Number(value);
+        var bytes = value - 0;
         if (isNaN(bytes)) { return "0 bytes"; }
         if (bytes <= 1) { return '1 byte'; }
         if (bytes < 1024) { return bytes.toFixed(0) + ' bytes'; }
@@ -44,27 +79,27 @@ var filters = exports.filters = {
         return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
     },
     first: function (value, arg) { return (value instanceof Array) ? value[0] : ""; },
-    fix_ampersands: function (value, arg) { return value.toString().replace('&', '&amp;'); },
+    fix_ampersands: function (value, arg) { return ("" + value).replace('&', '&amp;'); },
 
     floatformat: function (value, arg) {
-        var num = Number(value),
-            arg = arg || -1,
-            show_zeores = arg > 0,
+        arg = arg || -1;
+        var num = value - 0,
+            show_zeroes = arg > 0,
             fix = Math.abs(arg);
         if (isNaN(num)) {
             return '';
         }
         var s = num.toFixed(fix);
-        if (!show_zeores && Number(s) % 1 === 0) {
+        if (!show_zeroes && s % 1 === 0) {
             return num.toFixed(0);
         }
         return s;
     },
-    force_escape: function (value, arg) { return utils.html.escape(value.toString()); },
+    force_escape: function (value, arg) { return utils.html.escape("" + value); },
     get_digit: function (value, arg) {
         if (typeof value !== 'number' || typeof arg !== 'number' || typeof arg < 1) { return value; }
-        var s = value.toString();
-        return Number(s[s.length - arg]);
+        var s = "" + value;
+        return s[s.length - arg] - 0;
     },
     iriencode: function (value, arg) {
         // TODO: implement iriencode filter
@@ -74,13 +109,15 @@ var filters = exports.filters = {
     last: function (value, arg) { return (value instanceof Array && value.length) ? value[value.length - 1] : ''; },
     length: function (value, arg) { return value.hasOwnProperty('length') ? value.length : 0; },
     length_is: function (value, arg) { return value.hasOwnProperty('length') && value.length === arg; },
-    linebreaks: function (value, arg) { return utils.html.linebreaks(value.toString()); },
-    linebreaksbr: function (value, arg) { return value.toString().replace(/\n/g, '<br />'); },
+    linebreaks: function (value, arg) { return utils.html.linebreaks("" + value); },
+    linebreaksbr: function (value, arg) { return "" + value.replace(/\n/g, '<br />'); },
     linenumbers: function (value, arg) {
-        var lines = value.toString().split('\n');
-        var zeroes = new Array(lines.length.toString().length + 1).join('0');
+        var lines = ("" + value).split('\n');
+        var zeroes = "", len = ("" + lines.length).length;
+        while (len--) { zeroes += "0"; }
+
         lines = lines.map( function (s, idx) {
-            var num = (idx + 1).toString();
+            var num = "" + (idx + 1);
             return zeroes.slice(0, zeroes.length - num.length) + num + '. ' + s;
         });
         return lines.join('\n');
@@ -88,12 +125,74 @@ var filters = exports.filters = {
     ljust: function (value, arg) {
         if (typeof arg !== 'number') { return ''; }
         if (arg <= value.length) { return value.slice(0, arg); }
-        var spaces = new Array(arg + 1).join(' ');
-        return value + spaces.slice(0, arg - value.length);
+
+        var spaces = "", len = arg - value.length;
+        while (len--) { spaces += ' '; }
+        return value + spaces;
     },
     lower: function (value, arg) { return typeof value === 'string' ? value.toLowerCase() : ''; },
+    make_list: function (value, arg) { return String(value).split(''); },
+    phone2numeric: function (value, arg) {
+        value = String(value).toLowerCase();
+        return value.replace(/[a-pr-y]/g, function (x) {
+            var code = x.charCodeAt(0) - 91;
+            if (code > 22) { code = code - 1; }
+            return Math.floor(code / 3);
+        });
+    },
+    pluralize: function (value, arg) {
+        value = Number(value);
+        var plural = arg ? String(arg).split(',') : ['', 's'];
+        if (plural.length === 1) { plural.unshift(''); }
+        if (isNaN(value)) { return ''; }
+        return value === 1 ? plural[0] : plural[1];
+    },
+    pprint: function (value, arg) { return JSON.stringify(value); },
+    random: function (value, arg) {
+        return (value instanceof Array) ? value[ Math.floor( Math.random() * 4 ) ] : '';
+    },
+    removetags: function (value, arg) {
+        return String(value).replace(/<(.|\n)*?>/g, '');
+    },
+    rjust: function (value, arg) {
+        if (typeof arg !== 'number') { return ''; }
+        if (arg <= value.length) { return value.slice(0, arg); }
 
-    sub: function (value, arg) { return value - arg; }
+        var spaces = "", len = arg - value.length;
+        while (len--) { spaces += ' '; }
+        return spaces + value;
+    },
+    safe: function (value, arg) {
+        // TODO: implement autoescaping
+        throw "safe is not implemented";
+    },
+    safeseq: function (value, arg) {
+        // TODO: implement autoescaping
+        throw "safeseq is not implemented";
+    },
+    slice: function (value, arg) {
+        if (!(value instanceof Array)) { return []; }
+        var parts = (arg || '').split(/:/g);
+        
+        if (parts[1] === '') {
+            parts[1] = value.length;
+        }
+        parts = parts.map(Number);
+
+        if (!parts[2]) {
+            return value.slice(parts[0], parts[1]);
+        }
+        var out = [], i = parts[0], end = parts[1];
+        for (;i < end; i += parts[2]) {
+            out.push(value[i]);
+        }
+        return out;
+
+    },
+    title: function (value, arg) {
+        throw "Not implemented"; /* http://ejohn.org/blog/title-capitalization-in-javascript/ */
+    }
+
 };
 
 
@@ -181,7 +280,7 @@ var callbacks = exports.callbacks = {
         var parts = template.split_token(token.contents);
 
         if (parts[0] !== 'for' || parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
-            throw 'unexpected syntax in "for" tag' + sys.inspect(parts);
+            throw 'unexpected syntax in "for" tag: ' + token.contents;
         }
         
         var itemname = parts[1],
@@ -232,9 +331,8 @@ var callbacks = exports.callbacks = {
         node_list = parser.parse('else', 'endif');
         if (parser.next_token().type === 'else') {
             else_list = parser.parse('endif');
+            parser.delete_first_token();
         }
-
-        parser.delete_first_token();
 
         return nodes.IfNode(item_names, not_item_names, operator, node_list, else_list);
     }
