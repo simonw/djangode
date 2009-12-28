@@ -248,7 +248,8 @@ testcase('random');
     });
 testcase('removetags');
     test('should remove tags', function () {
-        assertEquals('jeg har en dejlig hest.', filters.removetags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>'));
+        assertEquals('Joel <button>is</button> a slug',
+            filters.removetags('<b>Joel</b> <button>is</button> a <span\n>slug</span>', 'b span'));
     });
 testcase('rjust')
     test('should right justify value in correctly sized field', function () {
@@ -270,6 +271,38 @@ testcase('slice')
         assertEquals([0,1,2,3,4,5,6,7,8,9], filters.slice(arr, 'hest'));
         assertEquals([0,1,2,3,4,5,6,7,8,9], filters.slice(arr));
     });
-
+testcase('slugify');
+    test('should slugify correctly', function () {
+        assertEquals('joel-is-a-slug', filters.slugify('Joel is a slug'));
+        assertEquals('s-str-verden-da-ikke-lngere', filters.slugify('Så står Verden da ikke længere!'));
+        assertEquals('super_max', filters.slugify('Super_Max'));
+    });
+testcase('stringformat');
+    test('return expected results', function () {
+        assertEquals('002', filters.stringformat(2, '03d'));
+        assertEquals('Hest', filters.stringformat('Hest', 's'));
+        assertEquals('', filters.stringformat('Hest', ''));
+        assertEquals('Hest      ', filters.stringformat('Hest', '-10s'));
+    });
+testcase('striptags');
+    test('should remove tags', function () {
+        assertEquals('jeg har en dejlig hest.', filters.striptags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>'));
+    });
+testcase('title');
+    test('should titlecase correctly', function () {
+        assertEquals('This Is Correct', filters.title('This is correct'));
+    });
+testcase('truncatewords');
+    test('should truncate', function () {
+        assertEquals('Joel is ...', filters.truncatewords('Joel is a slug', 2));
+    });
+testcase('upper');
+    test('should uppercase correctly', function () {
+        assertEquals('JOEL IS A SLUG', filters.upper('Joel is a slug'));
+    });
+testcase('urlencode');
+    test('should encode urls', function () {
+        assertEquals('%22Aardvarks%20lurk%2C%20OK%3F%22', filters.urlencode('"Aardvarks lurk, OK?"'));
+    });
 run();
 

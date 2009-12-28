@@ -18,5 +18,12 @@ testcase('string utility functions');
         assertEquals('    centered     ', center('centered', 17));
         assertEquals('centered', center('centered', 3));
     });
+testcase('titleCaps')
+    test('should work as expected', function () {
+        assertEquals("Nothing to Be Afraid Of?", titleCaps("Nothing to Be Afraid of?"));
+        assertEquals("Q&A With Steve Jobs: 'That's What Happens in Technology'",
+            titleCaps("Q&A With Steve Jobs: 'That's What Happens In Technology'")
+        );
+    })
 
 run();

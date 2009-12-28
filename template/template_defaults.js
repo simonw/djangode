@@ -1,8 +1,8 @@
 "use strict";
-/*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
-/*global require, process, exports */
+/*jslint eqeqeq: true, undef: true, regexp: false */
+/*global require, process, exports, escape */
 
-var sys = require('sys')
+var sys = require('sys');
 
 var template = require('./template');
 var utils = require('../utils/utils');
@@ -18,29 +18,27 @@ var utils = require('../utils/utils');
         safeseq
 
     Not implemented (yet):
-        slugify
-        stringformat
-        striptags
         time
         timesince
         timeuntil
-        title
-        truncatewords
         truncatewords_html
         unordered_list
-        upper
         urlencode
         urlize
         urlizetrunc
         wordcount
         wordwrap
         yesno
-    
+
+NOTE:
+    date() filter is not lozalized and has a few gotchas...
+    stringformat() filter is regular sprintf compliant and doesn't have real python syntax
 */
 
 var filters = exports.filters = {
     add: function (value, arg) {
-        value = value - 0, arg = arg - 0;
+        value = value - 0;
+        arg = arg - 0;
         return (isNaN(value) || isNaN(arg)) ? '' : (value + arg);
     },
     addslashes: function (value, arg) { return utils.string.add_slashes("" + value); },
@@ -105,30 +103,25 @@ var filters = exports.filters = {
         // TODO: implement iriencode filter
         throw "iri encoding is not implemented";
     },
-    join: function (value, arg) { return (value instanceof Array) ? value.join(arg) : '' },
-    last: function (value, arg) { return (value instanceof Array && value.length) ? value[value.length - 1] : ''; },
+    join: function (value, arg) { return (value instanceof Array) ? value.join(arg) : ''; },
+    last: function (value, arg) { return ((value instanceof Array) && value.length) ? value[value.length - 1] : ''; },
     length: function (value, arg) { return value.hasOwnProperty('length') ? value.length : 0; },
     length_is: function (value, arg) { return value.hasOwnProperty('length') && value.length === arg; },
     linebreaks: function (value, arg) { return utils.html.linebreaks("" + value); },
     linebreaksbr: function (value, arg) { return "" + value.replace(/\n/g, '<br />'); },
     linenumbers: function (value, arg) {
-        var lines = ("" + value).split('\n');
-        var zeroes = "", len = ("" + lines.length).length;
-        while (len--) { zeroes += "0"; }
-
-        lines = lines.map( function (s, idx) {
-            var num = "" + (idx + 1);
-            return zeroes.slice(0, zeroes.length - num.length) + num + '. ' + s;
-        });
-        return lines.join('\n');
+        var lines = String(value).split('\n');
+        var len = String(lines.length).length;
+        return lines
+            .map(function (s, idx) {  return utils.string.sprintf('%0' + len + 'd. %s', idx + 1, s); })
+            .join('\n');
     },
     ljust: function (value, arg) {
-        if (typeof arg !== 'number') { return ''; }
-        if (arg <= value.length) { return value.slice(0, arg); }
-
-        var spaces = "", len = arg - value.length;
-        while (len--) { spaces += ' '; }
-        return value + spaces;
+        try {
+            return utils.string.sprintf('%-' + arg + 's', value).substr(0, arg);
+        } catch (e) {
+            return '';
+        }
     },
     lower: function (value, arg) { return typeof value === 'string' ? value.toLowerCase() : ''; },
     make_list: function (value, arg) { return String(value).split(''); },
@@ -152,15 +145,16 @@ var filters = exports.filters = {
         return (value instanceof Array) ? value[ Math.floor( Math.random() * 4 ) ] : '';
     },
     removetags: function (value, arg) {
-        return String(value).replace(/<(.|\n)*?>/g, '');
+        arg = String(arg).replace(/\s+/g, '|');
+        var re = new RegExp( '</?\\s*(' + arg + ')\\b[^>]*/?>', 'ig');
+        return String(value).replace(re, '');
     },
     rjust: function (value, arg) {
-        if (typeof arg !== 'number') { return ''; }
-        if (arg <= value.length) { return value.slice(0, arg); }
-
-        var spaces = "", len = arg - value.length;
-        while (len--) { spaces += ' '; }
-        return spaces + value;
+        try {
+            return utils.string.sprintf('%' + arg + 's', value).substr(0, arg);
+        } catch (e) {
+            return '';
+        }
     },
     safe: function (value, arg) {
         // TODO: implement autoescaping
@@ -189,10 +183,27 @@ var filters = exports.filters = {
         return out;
 
     },
+    slugify: function (value, arg) {
+        return String(value).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
+    },
+    stringformat: function (value, arg) {
+        try { return utils.string.sprintf('%' + arg, value); } catch (e) { return ''; }
+    },
+    striptags: function (value, arg) {
+        return String(value).replace(/<(.|\n)*?>/g, '');
+    },
     title: function (value, arg) {
-        throw "Not implemented"; /* http://ejohn.org/blog/title-capitalization-in-javascript/ */
+        return utils.string.titleCaps( String(value) );
+    },
+    truncatewords: function (value, arg) {
+        return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
+    },
+    upper: function (value, arg) {
+        return (value + '').toUpperCase();
+    },
+    urlencode: function (value, arg) {
+        return escape(value);
     }
-
 };
 
 
