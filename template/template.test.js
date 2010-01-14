@@ -1,6 +1,6 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template'));
+process.mixin(GLOBAL, require('utils/test').dsl);
+process.mixin(GLOBAL, require('template/template'));
 
 testcase('Test tokenizer');
     test('sanity test', function () {
@@ -36,8 +36,8 @@ testcase('Filter Expression tests');
             new FilterExpression("item.subitem|add|sub")
         );
         assertEquals(
-            { variable: 'item', filter_list: [ { name: 'add', arg: 5 }, { name: 'sub', arg: 2 } ] },
-            new FilterExpression('item|add:"5"|sub:"2"')
+            { variable: 'item', filter_list: [ { name: 'add', arg: 5 }, { name: 'sub', arg: "2" } ] },
+            new FilterExpression('item|add:5|sub:"2"')
         );
         assertEquals(
             { variable: 'item', filter_list: [ { name: 'concat', arg: 'heste er naijs' } ] },
@@ -60,11 +60,12 @@ testcase('Filter Expression tests');
     test('should fail on invalid syntax', function () {
         function attempt(s) { return new FilterExpression(s); }
 
-        shouldThrow(attempt, 'item |add:"2"');
-        shouldThrow(attempt, 'item| add:"2"');
-        shouldThrow(attempt, 'item|add :"2"');
-        shouldThrow(attempt, 'item|add: "2"');
-        shouldThrow(attempt, 'item|add|:"2"|sub');
+        shouldThrow(attempt, 'item |add:2');
+        shouldThrow(attempt, 'item| add:2');
+        shouldThrow(attempt, 'item|add :2');
+        shouldThrow(attempt, 'item|add: 2');
+        shouldThrow(attempt, 'item|add|:2|sub');
+        shouldThrow(attempt, 'item|add:2 |sub');
     });
 
 testcase('Context test');
@@ -112,6 +113,17 @@ testcase('Context test');
 
         tc.context.pop();
         assertEquals(tc.plain.a, tc.context.get('a'));
+    });
+
+testcase('parser')
+    test('should parse', function () {
+        t = parse('hest');
+        assertEquals('hest', t.render());
+    });
+    test('node_list only_types should return only requested typed', function () {
+        t = parse('{% comment %}hest{% endcomment %}hest{% comment %}laks{% endcomment %}{% hest %}');
+        assertEquals(['comment','comment'], t.node_list.only_types('comment').map(function(x){return x.type}));
+        assertEquals(['text','UNKNOWN'], t.node_list.only_types('text', 'UNKNOWN').map(function(x){return x.type}));
     });
 
 run();

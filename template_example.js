@@ -1,22 +1,12 @@
 var posix = require('posix'),
     sys = require('sys'),
-    dj = require('./djangode'),
-    template_system = require('./template/template');
+    dj = require('djangode'),
+    template_system = require('template/template');
+    template_loader = require('template/loader');
 
-// load templates
-var templates = {};
 
-function parse_templates(path) {
-    posix.readdir(path).addCallback( function (files) {
-        files.forEach( function (file) {
-            posix.cat(path + '/' + file).addCallback(function (content) {
-                templates[path + '/' + file] = template_system.parse(content);
-            });
-        });
-    });
-}
-
-parse_templates('template-demo');
+// set template path
+template_loader.set_path('template-demo');
 
 // context to use when rendering template. In a real app this would likely come from a database
 var test_context = {
@@ -28,7 +18,7 @@ var test_context = {
     ordered_warranty: true,
     ship: {
         name: 'M/S Martha',
-        nationality: 'Danish',
+        nationality: 'Danish'
     }
 };
 
@@ -38,12 +28,12 @@ var app = dj.makeApp([
     ['^/(template-demo/.*)$', dj.serveFile],
 
     ['^/template$', function (req, res) {
-        var html = templates["template-demo/template.html"].render(test_context);
+        var html = template_loader.load('template.html').render(test_context);
         dj.respond(res, html);
     }],
 
     ['^/text$', function (req, res) {
-        var html = templates["template-demo/template.html"].render(test_context);
+        var html = template_loader.load('template.html').render(test_context);
         dj.respond(res, html, 'text/plain');
     }]
 ]);

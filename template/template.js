@@ -1,8 +1,10 @@
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
+
 var sys = require('sys');
-var utils = require('../utils/utils');
-var template_defaults = require('./template_defaults');
+
+var utils = require('utils/utils');
+var template_defaults = require('template/template_defaults');
 
 /***************** TOKENIZER ******************************/
 
@@ -68,13 +70,30 @@ function tokenize(input) {
 
 /*********** PARSER **********************************/
 
+function Parser(input) {
+    this.token_list = tokenize(input);
+    this.indent = 0;
+    this.blocks = {};
+}
+
 function parser_error(e) {
     return 'Parsing exception: ' + JSON.stringify(e, 0, 2);
 }
 
-function Parser(input) {
-    this.token_list = tokenize(input);
-    this.indent = 0;
+function make_nodelist() {
+    var node_list = [];
+    node_list.evaluate = function (context) {
+        return this.reduce( function (p, c) { return p + c(context); }, '');
+    };
+    node_list.only_types = function (/*args*/) {
+        var args = Array.prototype.slice.apply(arguments);
+        return this.filter( function (x) { return args.indexOf(x.type) > -1; } );
+    };
+    node_list.append = function (node, type) {
+        node.type = type;
+        this.push(node);
+    };
+    return node_list;
 }
 
 process.mixin(Parser.prototype, {
@@ -84,7 +103,7 @@ process.mixin(Parser.prototype, {
     parse: function () {
     
         var stoppers = Array.prototype.slice.apply(arguments);
-        var node_list = [];
+        var node_list = make_nodelist();
         var token = this.token_list[0];
         var callback = null;
 
@@ -102,10 +121,13 @@ process.mixin(Parser.prototype, {
 
             callback = this.callbacks[token.type];
             if (callback && typeof callback === 'function') {
-                node_list.push( callback(this, token) );
+                node_list.append( callback(this, token), token.type );
             } else {
                 //throw parser_error('Unknown tag: ' + token[0]);
-                node_list.push( template_defaults.TextNode('[[ UNKNOWN ' + token.type + ' ]]'));
+                node_list.append(
+                    template_defaults.nodes.TextNode('[[ UNKNOWN ' + token.type + ' ]]'),
+                    'UNKNOWN'
+                );
             }
         }
         if (stoppers.length) {
@@ -142,8 +164,11 @@ function normalize(value) {
 
 /*************** Context *********************************/
 
-function Context(o) {
+function Context(o, blockmark) {
     this.scope = [ o ];
+    this.extends = [];
+    this.blocks = {};
+    this.blockmark = blockmark;
 }
 
 process.mixin(Context.prototype, {
@@ -168,7 +193,11 @@ process.mixin(Context.prototype, {
                     }
                 }
 
-                return val;
+                if (typeof val === 'function') {
+                    return val();
+                } else { 
+                    return val;
+                }
             }
         }
 
@@ -182,6 +211,9 @@ process.mixin(Context.prototype, {
     },
     pop: function () {
         return this.scope.shift();
+    },
+    block_placeholder: function (name) {
+        return this.blockmark + name + this.blockmark;
     }
 });
 
@@ -189,17 +221,17 @@ process.mixin(Context.prototype, {
 
 var FilterExpression = function (expression, constant) {
 
-    // groups 1 = variable/constant, 2 = arg name, 3 = arg value without qoutes
-    this.re = /(^"[^"\\]*(?:\\.[^"\\]*)*"|^[\w\.]+)?(?:\|(\w+\b)(?::"([^"\\]*(?:\\.[^"\\]*)*)")?)?(?=\S|$)/g;
+    // groups 1 = variable/constant, 2 = arg name, 3 = arg value
+    this.re = /(^"[^"\\]*(?:\\.[^"\\]*)*"|^[\w\.]+)?(?:\|(\w+\b)(?::("[^"\\]*(?:\\.[^"\\]*)*"|[^\|\s]+))?)?(?=\S|$)/g;
     this.re.lastIndex = 0;
 
     var parsed = this.consume(expression);
     if (!parsed) {
-        throw this.error(expression + ' - 1');
+        throw this.error(expression);
     }
     if (constant) {
         if (parsed.variable) {
-            throw this.error(expression + ' - 2'); // did not expect variable when constant is defined...
+            throw this.error(expression); // did not expect variable when constant is defined...
         } else {
             this.constant = constant;
         }
@@ -212,7 +244,7 @@ var FilterExpression = function (expression, constant) {
                 this.variable = parsed.variable;
             }
         } else {
-            throw this.error(expression + ' - 3');
+            throw this.error(expression);
         }
     }
 
@@ -267,32 +299,42 @@ exports.FilterExpression = FilterExpression;
 
 /*********** Template **********************************/
 
-function Template(node_list) {
-    this.node_list = node_list;
+function Template(input) {
+    var parser = new Parser(input);
+    this.node_list = parser.parse();
 }
 
+var replace_blocks_re = /\u0000\u0000\u0000(\w+)\u0000\u0000\u0000/g
+
 process.mixin(Template.prototype, {
-    render: function (o) {
-        var context = new Context(o);
-        try {
-            return evaluate_node_list(this.node_list, context);
-        } catch (e) {
-            sys.debug(e);
-            return e;
+    render: function (o, delay_blocks) {
+
+        var context = (o instanceof Context) ? o : new Context(o || {}, '\u0000\u0000\u0000');
+        if (!o instanceof Context) 
+        var context = new Context(o || {});
+
+        var rendered = this.node_list.evaluate(context);
+
+        if (context.extends.length > 0) {
+            rendered = context.extends.pop();
         }
-    }
+
+        if (!delay_blocks) {
+            rendered = rendered.replace( replace_blocks_re, function (str, name) {
+                return context.blocks[name];
+            });
+        }
+
+        return rendered;
+    },
 });
 
 /********************************************************/
 
 exports.parse = function (input) {
-    var parser = new Parser(input);
+    //var parser = new Parser(input);
     // TODO: Better error handling, this is lame
-    try {
-        return new Template(parser.parse());
-    } catch (e) {
-        return new Template([ template_defaults.nodes.TextNode(e) ]);
-    }
+    return new Template(input);
 };
 
 // TODO: Make this a property on a token class
@@ -301,12 +343,6 @@ function split_token(input) {
 }
 exports.split_token = split_token;
 
-
-// TODO: Node lists are always created by the Parser class, so it could extend the list with this method.
-function evaluate_node_list (node_list, context) {
-    return node_list.reduce( function (p, c) { return p + c(context); }, '');
-}
-exports.evaluate_node_list = evaluate_node_list; 
 
 
 // exported for test
