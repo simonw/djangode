@@ -5,6 +5,7 @@ var sys = require('sys');
 
 var utils = require('utils/utils');
 var template_defaults = require('template/template_defaults');
+var template_loader = require('template/loader');
 
 /***************** TOKENIZER ******************************/
 
@@ -166,9 +167,7 @@ function normalize(value) {
 
 function Context(o, blockmark) {
     this.scope = [ o ];
-    this.extends = [];
     this.blocks = {};
-    this.blockmark = blockmark;
 }
 
 process.mixin(Context.prototype, {
@@ -212,9 +211,6 @@ process.mixin(Context.prototype, {
     pop: function () {
         return this.scope.shift();
     },
-    block_placeholder: function (name) {
-        return this.blockmark + name + this.blockmark;
-    }
 });
 
 /*********** FilterExpression **************************/
@@ -304,25 +300,17 @@ function Template(input) {
     this.node_list = parser.parse();
 }
 
-var replace_blocks_re = /\u0000\u0000\u0000(\w+)\u0000\u0000\u0000/g
-
 process.mixin(Template.prototype, {
-    render: function (o, delay_blocks) {
+    render: function (o) {
 
-        var context = (o instanceof Context) ? o : new Context(o || {}, '\u0000\u0000\u0000');
-        if (!o instanceof Context) 
-        var context = new Context(o || {});
+        var context = (o instanceof Context) ? o : new Context(o || {});
+        context.extends = false;
 
         var rendered = this.node_list.evaluate(context);
 
-        if (context.extends.length > 0) {
-            rendered = context.extends.pop();
-        }
-
-        if (!delay_blocks) {
-            rendered = rendered.replace( replace_blocks_re, function (str, name) {
-                return context.blocks[name];
-            });
+        if (context.extends) {
+            var parent_template = template_loader.load(context.extends);
+            rendered = parent_template.render(context);
         }
 
         return rendered;

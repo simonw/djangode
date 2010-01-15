@@ -4,7 +4,6 @@
 var sys = require('sys');
 
 var template = require('template/template');
-var template_loader = require('template/loader');
 var utils = require('utils/utils');
 
 /* TODO: Missing filters
@@ -322,27 +321,36 @@ var nodes = exports.nodes = {
     },
 
     BlockNode: function (name, node_list) {
+
         return function (context) {
 
-            if (context.blocks[name]) {
-                context.push({ block: { super: context.blocks[name] }});
-            } else {
-                context.push();
+            var out = '';
+
+            // init block list if it isn't already
+            if (!context.blocks[name]) {
+                context.blocks[name] = [];
             }
 
-            context.blocks[name] = node_list.evaluate( context );
+            // put this block in front of list
+            context.blocks[name].unshift( node_list );
+
+            context.push();
+
+            // descend through templates and evaluate for overrides
+            context.blocks[name].forEach( function (list) {
+                out = list.evaluate( context );
+                context.set('block', { super: out });
+            });
+
             context.pop();
 
-            return context.block_placeholder(name);;
+            return out;
         };
     },
 
     ExtendsNode: function (item) {
         return function (context) {
-            var name = context.get(item);
-            var parent_template = template_loader.load(name);
-            var parent_rendered = parent_template.render(context, 'delay_blocks');
-            context.extends.push( parent_rendered );
+            context.extends = context.get(item);
             return '';
         };
     }
