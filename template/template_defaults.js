@@ -85,9 +85,9 @@ var filters = exports.filters = {
     },
     divisibleby: function (value, arg) { return value % arg === 0; },
 
-    escape: function (value, arg) {
-        // TODO: Implement escaping/autoescaping correctly
-        throw "escape() filter is not implemented";
+    escape: function (value, arg, safety) {
+        safety.must_escape = true;
+        return value;
     },
     escapejs: function (value, arg) { return escape(value || ''); },
     filesizeformat: function (value, arg) {
@@ -100,8 +100,10 @@ var filters = exports.filters = {
         return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
     },
     first: function (value, arg) { return (value instanceof Array) ? value[0] : ""; },
-    fix_ampersands: function (value, arg) { return ("" + value).replace('&', '&amp;'); },
-
+    fix_ampersands: function (value, arg, safety) {
+        safety.is_safe = true;
+        return ("" + value).replace('&', '&amp;');
+    },
     floatformat: function (value, arg) {
         arg = arg || -1;
         var num = value - 0,
@@ -116,7 +118,10 @@ var filters = exports.filters = {
         }
         return s;
     },
-    force_escape: function (value, arg) { return utils.html.escape("" + value); },
+    force_escape: function (value, arg, safety) {
+        safety.is_safe = true;
+        return utils.html.escape("" + value);
+    },
     get_digit: function (value, arg) {
         if (typeof value !== 'number' || typeof arg !== 'number' || typeof arg < 1) { return value; }
         var s = "" + value;
@@ -128,16 +133,36 @@ var filters = exports.filters = {
     },
     join: function (value, arg) { return (value instanceof Array) ? value.join(arg) : ''; },
     last: function (value, arg) { return ((value instanceof Array) && value.length) ? value[value.length - 1] : ''; },
-    length: function (value, arg) { return value.hasOwnProperty('length') ? value.length : 0; },
-    length_is: function (value, arg) { return value.hasOwnProperty('length') && value.length === arg; },
-    linebreaks: function (value, arg) { return utils.html.linebreaks("" + value); },
-    linebreaksbr: function (value, arg) { return "" + value.replace(/\n/g, '<br />'); },
-    linenumbers: function (value, arg) {
+    length: function (value, arg) { return value.length ? value.length : 0; },
+    length_is: function (value, arg) { return value.length === arg; },
+    linebreaks: function (value, arg, safety) {
+        if (!safety.is_safe && safety.must_escape) {
+            value = utils.html.escape("" + value);
+        }
+        safety.is_safe = true;
+        return utils.html.linebreaks("" + value);
+    },
+    linebreaksbr: function (value, arg, safety) {
+        if (!safety.is_safe && safety.must_escape) {
+            value = utils.html.escape("" + value);
+        }
+        safety.is_safe = true;
+        return "" + value.replace(/\n/g, '<br />');
+    },
+    linenumbers: function (value, arg, safety) {
         var lines = String(value).split('\n');
         var len = String(lines.length).length;
-        return lines
-            .map(function (s, idx) {  return utils.string.sprintf('%0' + len + 'd. %s', idx + 1, s); })
+
+        // TODO: escape if string is not safe, and autoescaping is active
+        var out = lines
+            .map(function (s, idx) {
+                if (!safety.is_safe && safety.must_escape) {
+                    s = utils.html.escape("" + s);
+                }
+                return utils.string.sprintf('%0' + len + 'd. %s', idx + 1, s); })
             .join('\n');
+        safety.is_safe = true;
+        return out;
     },
     ljust: function (value, arg) {
         try {
@@ -165,11 +190,12 @@ var filters = exports.filters = {
     },
     pprint: function (value, arg) { return JSON.stringify(value); },
     random: function (value, arg) {
-        return (value instanceof Array) ? value[ Math.floor( Math.random() * 4 ) ] : '';
+        return (value instanceof Array) ? value[ Math.floor( Math.random() * value.length ) ] : '';
     },
-    removetags: function (value, arg) {
+    removetags: function (value, arg, safety) {
         arg = String(arg).replace(/\s+/g, '|');
         var re = new RegExp( '</?\\s*(' + arg + ')\\b[^>]*/?>', 'ig');
+        safety.is_safe = true;
         return String(value).replace(re, '');
     },
     rjust: function (value, arg) {
@@ -179,13 +205,13 @@ var filters = exports.filters = {
             return '';
         }
     },
-    safe: function (value, arg) {
-        // TODO: implement autoescaping
-        throw "safe is not implemented";
+    safe: function (value, arg, safety) {
+        safety.is_safe = true;
+        return value;
     },
     safeseq: function (value, arg) {
-        // TODO: implement autoescaping
-        throw "safeseq is not implemented";
+        safety.is_safe = true;
+        return value;
     },
     slice: function (value, arg) {
         if (!(value instanceof Array)) { return []; }
@@ -212,7 +238,8 @@ var filters = exports.filters = {
     stringformat: function (value, arg) {
         try { return utils.string.sprintf('%' + arg, value); } catch (e) { return ''; }
     },
-    striptags: function (value, arg) {
+    striptags: function (value, arg, safety) {
+        safety.is_safe = true;
         return String(value).replace(/<(.|\n)*?>/g, '');
     },
     title: function (value, arg) {
@@ -235,7 +262,6 @@ var nodes = exports.nodes = {
     TextNode: function (text) {
         return function () { return text; };
     },
-
 
     VariableNode: function (filterexpression) {
         return function (context) {
@@ -334,15 +360,17 @@ var nodes = exports.nodes = {
             // put this block in front of list
             context.blocks[name].unshift( node_list );
 
-            context.push();
+            // if this is a root template descend through templates and evaluate blocks for overrides
+            if (!context.extends) {
+                context.push();
 
-            // descend through templates and evaluate for overrides
-            context.blocks[name].forEach( function (list) {
-                out = list.evaluate( context );
-                context.set('block', { super: out });
-            });
+                context.blocks[name].forEach( function (list) {
+                    out = list.evaluate( context );
+                    context.set('block', { super: out });
+                });
 
-            context.pop();
+                context.pop();
+            }
 
             return out;
         };
@@ -490,10 +518,14 @@ var callbacks = exports.callbacks = {
 
     'extends': function (parser, token) {
         var parts = template.split_token(token.contents);
-        if (parts[0] !== 'extends' || parts.length !== 2) { throw 'unexpected syntax in "block" tag'; }
+        if (parts[0] !== 'extends' || parts.length !== 2) { throw 'unexpected syntax in "extends" tag'; }
         var name = parts[1];
 
         return nodes.ExtendsNode(name);
     }
 };
+
+
+
+
 

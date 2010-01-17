@@ -96,7 +96,12 @@ testcase('first filter');
 
 testcase('fix_ampersands');
     test('should fix ampersands', function () {
-        assertEquals('Tom &amp; Jerry', filters.fix_ampersands('Tom & Jerry'));
+        assertEquals('Tom &amp; Jerry', filters.fix_ampersands('Tom & Jerry', null, {}));
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.fix_ampersands('Tom & Jerry', {}, safety);
+        assertEquals(true, safety.is_safe);
     });
 
 testcase('floatformat filter');
@@ -119,8 +124,13 @@ testcase('force_escape filter');
     test('should escape string', function () {
         assertEquals(
             '&lt;script=&qout;alert(&#39;din mor&#39;)&qout;&gt;&lt;/script&gt;',
-            filters.force_escape('<script="alert(\'din mor\')"></script>')
+            filters.force_escape('<script="alert(\'din mor\')"></script>', null, {})
         );
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.force_escape('<script="alert(\'din mor\')"></script>', null, safety)
+        assertEquals(true, safety.is_safe);
     });
 
 testcase('get_digit');
@@ -162,11 +172,33 @@ testcase('length_is filter')
     });
 testcase('linebreaks')
     test('linebreaks should be converted to <p> and <br /> tags.', function () {
-        assertEquals('<p>Joel<br />is a slug</p>', filters.linebreaks('Joel\nis a slug'));
+        assertEquals('<p>Joel<br />is a slug</p>', filters.linebreaks('Joel\nis a slug', null, {}));
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.linebreaks('Joel\nis a slug', null, safety)
+        assertEquals(true, safety.is_safe);
+    });
+    test('string should be escaped if requsted', function () {
+        var safety = { must_escape: true };
+        var actual = filters.linebreaks('Two is less than three\n2 < 3', null, safety)
+        assertEquals('<p>Two is less than three<br />2 &lt; 3</p>', actual)
     });
 testcase('linebreaksbr')
     test('linebreaks should be converted to <br /> tags.', function () {
-        assertEquals('Joel<br />is a slug.<br />For sure...', filters.linebreaksbr('Joel\nis a slug.\nFor sure...'));
+        assertEquals('Joel<br />is a slug.<br />For sure...',
+            filters.linebreaksbr('Joel\nis a slug.\nFor sure...', null, {})
+        );
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.linebreaksbr('Joel\nis a slug', null, safety)
+        assertEquals(true, safety.is_safe);
+    });
+    test('string should be escaped if requsted', function () {
+        var safety = { must_escape: true };
+        var actual = filters.linebreaksbr('Two is less than three\n2 < 3', null, safety)
+        assertEquals('Two is less than three<br />2 &lt; 3', actual)
     });
 testcase('linenumbers')
     test('should add linenumbers to text', function () {
@@ -197,7 +229,17 @@ testcase('linenumbers')
             + "11. circumstances occur in which toil and pain can procure him\n"
             + "12. some great pleasure. To take a trivial example, which of us"
 
-        assertEquals(expected, filters.linenumbers(s));
+        assertEquals(expected, filters.linenumbers(s, null, {}));
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.linenumbers('Joel\nis a slug', null, safety)
+        assertEquals(true, safety.is_safe);
+    });
+    test('string should be escaped if requsted', function () {
+        var safety = { must_escape: true };
+        var actual = filters.linenumbers('Two is less than three\n2 < 3', null, safety)
+        assertEquals('1. Two is less than three\n2. 2 &lt; 3', actual)
     });
 testcase('ljust')
     test('should left justify value i correctly sized field', function () {
@@ -236,6 +278,7 @@ testcase('pprint');
         if (!response) { fail('response is empty!'); }
     });
 testcase('random');
+    // TODO: The testcase for random is pointless and should be improved
     test('should return an element from the list', function () {
         var arr = ['h', 'e', 's', 't'];
         var response = filters.random(arr);
@@ -249,7 +292,12 @@ testcase('random');
 testcase('removetags');
     test('should remove tags', function () {
         assertEquals('Joel <button>is</button> a slug',
-            filters.removetags('<b>Joel</b> <button>is</button> a <span\n>slug</span>', 'b span'));
+            filters.removetags('<b>Joel</b> <button>is</button> a <span\n>slug</span>', 'b span', {}));
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.removetags('<b>Joel</b> <button>is</button> a <span\n>slug</span>', 'b span', safety);
+        assertEquals(true, safety.is_safe);
     });
 testcase('rjust')
     test('should right justify value in correctly sized field', function () {
@@ -286,7 +334,14 @@ testcase('stringformat');
     });
 testcase('striptags');
     test('should remove tags', function () {
-        assertEquals('jeg har en dejlig hest.', filters.striptags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>'));
+        assertEquals('jeg har en dejlig hest.',
+            filters.striptags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>', null, {})
+        );
+    });
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.striptags('<p>jeg har en <strong\n>dejlig</strong> hest.</p>', null, safety);
+        assertEquals(true, safety.is_safe);
     });
 testcase('title');
     test('should titlecase correctly', function () {
@@ -303,6 +358,24 @@ testcase('upper');
 testcase('urlencode');
     test('should encode urls', function () {
         assertEquals('%22Aardvarks%20lurk%2C%20OK%3F%22', filters.urlencode('"Aardvarks lurk, OK?"'));
+    });
+testcase('safe');
+    test('string should be marked as safe', function () {
+        var safety = {};
+        filters.safe('Joel is a slug', null, safety);
+        assertEquals(true, safety.is_safe);
+    });
+testcase('safeseq');
+    test('output should be marked as safe', function () {
+        var safety = {};
+        filters.safe(['hest', 'giraf'], null, safety);
+        assertEquals(true, safety.is_safe);
+    });
+testcase('escape');
+    test('output should be marked as in need of escaping', function () {
+        var safety = { must_escape: false };
+        filters.escape('hurra', null, safety);
+        assertEquals(true, safety.must_escape);
     });
 run();
 

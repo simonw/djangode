@@ -165,9 +165,10 @@ function normalize(value) {
 
 /*************** Context *********************************/
 
-function Context(o, blockmark) {
-    this.scope = [ o ];
+function Context(o) {
+    this.scope = [ o || {} ];
     this.blocks = {};
+    this.autoescaping = true;
 }
 
 process.mixin(Context.prototype, {
@@ -277,16 +278,32 @@ process.mixin(FilterExpression.prototype, {
             value = context.get(this.variable);
         }
 
-        return this.filter_list.reduce( function (p,c) {
+        var safety = {
+            is_safe: false,
+            must_escape: context.autoescaping,
+        };
+
+        var out = this.filter_list.reduce( function (p,c) {
+
             var filter = template_defaults.filters[c.name];
+
             if ( filter && typeof filter === 'function') {
-                return filter(p, c.arg);
+                return filter(p, c.arg, safety);
             } else {
                 // throw 'Cannot find filter';
                 sys.debug('Cannot find filter ' + c.name);
-                return value;
+                return p;
             }
         }, value);
+
+        if (safety.must_escape && !safety.is_safe) {
+            if (typeof out === 'string') {
+                return utils.html.escape(out)
+            } else if (out instanceof Array) {
+                return out.map( utils.html.escape );
+            }
+        }
+        return out;
     }
 });
 

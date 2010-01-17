@@ -68,6 +68,32 @@ testcase('Filter Expression tests');
         shouldThrow(attempt, 'item|add:2 |sub');
     });
 
+    test('output (without filters) should be escaped if autoescaping is on', function () {
+        var context = new Context({test: '<script>'});
+        context.autoescaping = true;
+        var expr = new FilterExpression("test");
+        assertEquals('&lt;script&gt;', expr.resolve(context));
+    });
+
+    test('output (without filters) should not be escaped if autoescaping is off', function () {
+        var context = new Context({test: '<script>'});
+        context.autoescaping = false;
+        var expr = new FilterExpression("test");
+        assertEquals('<script>', expr.resolve(context));
+    });
+    test('safe filter should prevent escaping', function () {
+        var context = new Context({test: '<script>'});
+        context.autoescaping = true;
+        var expr = new FilterExpression("test|safe|upper");
+        assertEquals('<SCRIPT>', expr.resolve(context));
+    });
+    test('escape filter should force escaping', function () {
+        var context = new Context({test: '<script>'});
+        context.autoescaping = false;
+        var expr = new FilterExpression("test|escape|upper");
+        assertEquals('&lt;SCRIPT&gt;', expr.resolve(context));
+    });
+
 testcase('Context test');
     setup( function () {
         var tc = {
