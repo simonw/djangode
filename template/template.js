@@ -300,7 +300,7 @@ process.mixin(FilterExpression.prototype, {
             if (typeof out === 'string') {
                 return utils.html.escape(out)
             } else if (out instanceof Array) {
-                return out.map( utils.html.escape );
+                return out.map( function (o) { return typeof o === 'string' ? utils.html.escape(o) : o; } );
             }
         }
         return out;

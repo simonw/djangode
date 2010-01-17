@@ -11,11 +11,6 @@ var utils = require('utils/utils');
     Don't know how:
         iriencode
 
-    Autoescaping:
-        escape
-        safe
-        safeseq
-
     Not implemented (yet):
         time
         timesince
@@ -34,8 +29,6 @@ NOTE:
 
 Missing tags:
     for ( missing 'empty' tag )
-
-    autoescape
 
     include
     ssi
@@ -381,6 +374,16 @@ var nodes = exports.nodes = {
             context.extends = context.get(item);
             return '';
         };
+    },
+
+    AutoescapeNode: function (enable, node_list) {
+        return function (context) {
+            var before = context.autoescaping;
+            context.autoescaping = enable;
+            out = node_list.evaluate( context );
+            context.autoescaping = before;
+            return out;
+        }
     }
 
 };
@@ -522,7 +525,26 @@ var callbacks = exports.callbacks = {
         var name = parts[1];
 
         return nodes.ExtendsNode(name);
+    },
+
+    'autoescape': function (parser, token) {
+        var parts = template.split_token(token.contents);
+        if (parts[0] !== 'autoescape' || parts.length !== 2) { throw 'unexpected syntax in "autoescape" tag'; }
+        var enable;
+        if (parts[1] === 'on') {
+            enable = true;
+        } else if (parts[1] === 'off' ) {
+            enable = false;
+        } else {
+            throw 'unexpected syntax in "autoescape" tag. Expected on or off';
+        }
+
+        var node_list = parser.parse('endautoescape');
+        parser.delete_first_token();
+
+        return nodes.AutoescapeNode(enable, node_list);
     }
+
 };
 
 
