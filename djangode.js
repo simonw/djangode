@@ -1,6 +1,7 @@
 var http = require('http'),
     sys = require('sys'),
-    posix = require('posix');
+    posix = require('posix')
+	url = require('url');
 
 function extname(path) {
     var index = path.lastIndexOf('.');
@@ -94,7 +95,7 @@ exports.makeApp = function(urls, options) {
     return function(req, res) {
         debuginfo.last_request = req;
         debuginfo.last_response = res;
-        var path = req.uri.path;
+        var path = url.parse(req.url)["pathname"];
         var view = show_404;
         var args = [req, res];
         for (var pair, i = 0; pair = compiled[i]; i++) {
