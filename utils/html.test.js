@@ -16,7 +16,14 @@ testcase('tests for linebreaks()')
             + '\n'
             + '<p>The days are just packed!<br /></p>';
         assertEquals(expected, linebreaks(input));
-        assertEquals(expected_escaped, linebreaks(input, { autoescape: true }));
+        assertEquals(expected_escaped, linebreaks(input, { escape: true }));
     })
+testcase('truncate_html_words');
+    test('should truncate strings without tags', function () {
+        assertEquals('Joel is ...', truncate_html_words('Joel is a slug', 2));
+    });
+    test('should close tags on truncate', function () {
+        assertEquals('<p>Joel is ...</p>', truncate_html_words('<p>Joel is a slug</p>', 2));
+    });
 
 run();

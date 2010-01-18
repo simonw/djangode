@@ -102,6 +102,9 @@ function sprintf () {
 }
 /*************************************************************************/
 
+exports.sprintf = sprintf;
+exports.str_repeat = str_repeat;
+
 /*************************************************************************
 * titleCaps from http://ejohn.org/files/titleCaps.js (by John Resig)
 */
@@ -150,10 +153,6 @@ exports.titleCaps = titleCaps;
 
 
 /*************************************************************************/
-
-exports.sprintf = sprintf;
-exports.str_repeat = str_repeat;
-
 
 function center(s, width) {
     if (s.length > width) { return s; }

@@ -1,16 +1,22 @@
 #!/usr/bin/python
 import re, os
+from subprocess import Popen, PIPE
 
 print ""
 
 cmd = 'find . -name "*.test.js"';
-files = [file.rstrip('\n') for file in os.popen(cmd).readlines()]
-
+files = Popen(cmd, shell=True, stdout=PIPE).communicate()[0].splitlines()
 failed_list = []
 
 for file in files:
-    output = os.popen('node ' + file).readlines()
-    result = [line.rstrip('\n') for line in output if line.startswith('Total')][0]
+    output = Popen('node ' + file, shell=True, stdout=PIPE).communicate()[0].splitlines()
+    try:
+        result = [line for line in output if line.startswith('Total')][0]
+    except:
+        #bizarre, but sometimes popen apears to return empty strings
+        #I'm too tired to fix this right now, so for now just retry and hope for better results
+        output = Popen('node ' + file, shell=True, stdout=PIPE).communicate()[0].splitlines()
+        result = [line for line in output if line.startswith('Total')][0]
     (total, failed, error) = re.split(r':|,', result)[1::2]
 
     if int(failed) > 0 or int(error) > 0:

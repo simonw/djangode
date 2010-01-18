@@ -2,8 +2,6 @@
 /*global require, process, exports, escape */
 
 var sys = require('sys');
-
-var template = require('template/template');
 var utils = require('utils/utils');
 
 /* TODO: Missing filters
@@ -15,7 +13,6 @@ var utils = require('utils/utils');
         time
         timesince
         timeuntil
-        truncatewords_html
         unordered_list
         urlize
         urlizetrunc
@@ -35,7 +32,7 @@ Missing tags:
     load
 
     debug
-    firstof
+
     ifchanged
     ifequal
     ifnotequal
@@ -45,7 +42,6 @@ Missing tags:
     templatetag
     url
     widthratio
-    with
 
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
@@ -129,24 +125,19 @@ var filters = exports.filters = {
     length: function (value, arg) { return value.length ? value.length : 0; },
     length_is: function (value, arg) { return value.length === arg; },
     linebreaks: function (value, arg, safety) {
-        if (!safety.is_safe && safety.must_escape) {
-            value = utils.html.escape("" + value);
-        }
+        var out = utils.html.linebreaks("" + value, { escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
-        return utils.html.linebreaks("" + value);
+        return out;
     },
     linebreaksbr: function (value, arg, safety) {
-        if (!safety.is_safe && safety.must_escape) {
-            value = utils.html.escape("" + value);
-        }
+        var out = utils.html.linebreaks("" + value, { onlybr: true, escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
-        return "" + value.replace(/\n/g, '<br />');
+        return out;
     },
     linenumbers: function (value, arg, safety) {
         var lines = String(value).split('\n');
         var len = String(lines.length).length;
 
-        // TODO: escape if string is not safe, and autoescaping is active
         var out = lines
             .map(function (s, idx) {
                 if (!safety.is_safe && safety.must_escape) {
@@ -240,6 +231,10 @@ var filters = exports.filters = {
     },
     truncatewords: function (value, arg) {
         return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
+    },
+    truncatewords_html: function (value, arg, safety) {
+        safety.is_safe = true;
+        return utils.html.truncate_html_words(value, arg);
     },
     upper: function (value, arg) {
         return (value + '').toUpperCase();
@@ -384,6 +379,28 @@ var nodes = exports.nodes = {
             context.autoescaping = before;
             return out;
         }
+    },
+
+    FirstOfNode: function (choices) {
+        return function (context) {
+            var i, val;
+            for (i = 0; i < choices.length; i++) {
+                var val = context.get(choices[i]);
+                if (val) { return val; }
+            }
+            return '';
+        }
+    },
+
+    WithNode: function (variable, name, node_list) {
+        return function (context) {
+            var item = context.get(variable);
+            context.push();
+            context.set(name, item);
+            var out = node_list.evaluate( context );
+            context.pop();
+            return out;
+        }
     }
 
 };
@@ -392,7 +409,7 @@ var callbacks = exports.callbacks = {
     'text': function (parser, token) { return nodes.TextNode(token.contents); },
 
     'variable': function (parser, token) {
-        return nodes.VariableNode( new template.FilterExpression(token.contents) );
+        return nodes.VariableNode( parser.make_filterexpression(token.contents) );
     },
 
     'comment': function (parser, token) {
@@ -403,7 +420,7 @@ var callbacks = exports.callbacks = {
 
     'for': function (parser, token) {
         
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
 
         if (parts[0] !== 'for' || parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
             throw 'unexpected syntax in "for" tag: ' + token.contents;
@@ -421,7 +438,7 @@ var callbacks = exports.callbacks = {
     
     'if': function (parser, token) {
 
-        var parts = template.split_token( token.contents );
+        var parts = token.split_contents();
 
         if (parts[0] !== 'if') { throw 'unexpected syntax in "if" tag'; }
 
@@ -464,7 +481,7 @@ var callbacks = exports.callbacks = {
     },
 
     'cycle': function (parser, token) {
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
 
         if (parts[0] !== 'cycle') { throw 'unexpected syntax in "cycle" tag'; }
 
@@ -497,10 +514,10 @@ var callbacks = exports.callbacks = {
     },
 
     'filter': function (parser, token) {
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
         if (parts[0] !== 'filter' || parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
 
-        var expr = new template.FilterExpression('|' + parts[1], ' ');
+        var expr = parser.make_filterexpression('|' + parts[1], ' ');
 
         var node_list = parser.parse('endfilter');
         parser.delete_first_token();
@@ -509,7 +526,7 @@ var callbacks = exports.callbacks = {
     },
     
     'block': function (parser, token) {
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
         if (parts[0] !== 'block' || parts.length !== 2) { throw 'unexpected syntax in "block" tag'; }
         var name = parts[1];
 
@@ -520,7 +537,7 @@ var callbacks = exports.callbacks = {
     },
 
     'extends': function (parser, token) {
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
         if (parts[0] !== 'extends' || parts.length !== 2) { throw 'unexpected syntax in "extends" tag'; }
         var name = parts[1];
 
@@ -528,7 +545,7 @@ var callbacks = exports.callbacks = {
     },
 
     'autoescape': function (parser, token) {
-        var parts = template.split_token(token.contents);
+        var parts = token.split_contents();
         if (parts[0] !== 'autoescape' || parts.length !== 2) { throw 'unexpected syntax in "autoescape" tag'; }
         var enable;
         if (parts[1] === 'on') {
@@ -543,6 +560,23 @@ var callbacks = exports.callbacks = {
         parser.delete_first_token();
 
         return nodes.AutoescapeNode(enable, node_list);
+    },
+
+    'firstof': function (parser, token) {
+        var parts = token.split_contents();
+        if (parts[0] !== 'firstof') { throw 'unexpected syntax in "firstof" tag'; }
+        return nodes.FirstOfNode( parts.slice(1) );
+    },
+
+    'with': function (parser, token) {
+        var parts = token.split_contents();
+        if (parts[0] !== 'with' || parts[2] !== 'as' || parts.length !== 4) {
+            throw 'unexpected syntax in "with" tag';
+        }
+        var node_list = parser.parse('endwith');
+        parser.delete_first_token();
+
+        return nodes.WithNode(parts[1], parts[3], node_list);
     }
 
 };

@@ -160,6 +160,23 @@ testcase('autoescape')
         var t = template.parse('{% autoescape on %}{{ test }}{% endautoescape %}');
         assertEquals( '&lt;script&gt;', t.render( {test: '<script>'} ));
     });
+testcase('firstof')
+    test('should parse and evaluate', function () {
+        var t = template.parse('{% firstof var1 var2 var3 %}');
+        assertEquals('hest', t.render( { var1: 'hest' } ));
+        assertEquals('hest', t.render( { var2: 'hest' } ));
+        assertEquals('', t.render());
+        t = template.parse('{% firstof var1 var2 var3 "fallback" %}');
+        assertEquals('fallback', t.render());
+    });
+testcase('with')
+    test('function result should be cached', function () {
+        var t = template.parse('{% with test.sub.func as tmp %}{{ tmp }}:{{ tmp }}{% endwith %}');
+        var cnt = 0;
+        var o = { test: { sub: { func: function () { cnt++; return cnt; } } } }
+        assertEquals('1:1', t.render(o));
+        assertEquals(1, cnt);
+    });
 
 run();
 

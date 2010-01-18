@@ -377,5 +377,15 @@ testcase('escape');
         filters.escape('hurra', null, safety);
         assertEquals(true, safety.must_escape);
     });
+testcase('truncatewords_html');
+    test('should truncate and close tags', function () {
+        assertEquals('Joel is ...', filters.truncatewords_html('Joel is a slug', 2, {}));
+        assertEquals('<p>Joel is ...</p>', filters.truncatewords_html('<p>Joel is a slug</p>', 2, {}));
+    });
+    test('should mark output as safe', function () {
+        var safety = {};
+        filters.truncatewords_html('<p>Joel is a slug</p>', 2, safety);
+        assertEquals(true, safety.is_safe);
+    });
 run();
 

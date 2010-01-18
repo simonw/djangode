@@ -14,15 +14,15 @@ testcase('Test tokenizer');
     test('split token contents', function () {
         assertEquals(
             ['virker', 'det', 'her'],
-            split_token('  virker det her  ')
+            tokenize('  virker det her  ')[0].split_contents()
         );
         assertEquals(
             ['her', 'er', '"noget der er i qoutes"', 'og', 'noget', 'der', 'ikke', 'er'],
-            split_token('her er "noget der er i qoutes" og noget der ikke er')
+            tokenize('her er "noget der er i qoutes" og noget der ikke er')[0].split_contents()
         );
 
-        assertEquals( ['date:"F j, Y"'], split_token('date:"F j, Y"'));
-        assertEquals( ['date:', '"F j, Y"'], split_token('date: "F j, Y"'));
+        assertEquals( ['date:"F j, Y"'], tokenize('date:"F j, Y"')[0].split_contents());
+        assertEquals( ['date:', '"F j, Y"'], tokenize('date: "F j, Y"')[0].split_contents());
     });
 
 testcase('Filter Expression tests');

@@ -7,6 +7,19 @@ var utils = require('utils/utils');
 var template_defaults = require('template/template_defaults');
 var template_loader = require('template/loader');
 
+/***************** TOKEN **********************************/
+
+function Token(type, contents) {
+    this.type = type;
+    this.contents = contents;
+}
+
+process.mixin(Token.prototype, {
+    split_contents: function () {
+        return utils.string.smart_split(this.contents);
+    }
+});
+
 /***************** TOKENIZER ******************************/
 
 function tokenize(input) {
@@ -33,7 +46,7 @@ function tokenize(input) {
     function literal() {
         var res = consume_until("{{", "{%");
 
-        if (res[0]) { token_list.push( {type: 'text', contents: res[0] } ); }
+        if (res[0]) { token_list.push( new Token('text', res[0]) ) }
         
         if (res[1] === "{{") { return variable_tag; }
         if (res[1] === "{%") { return template_tag; }
@@ -43,8 +56,7 @@ function tokenize(input) {
     function variable_tag() {
         var res = consume_until("}}");
 
-        if (res[0]) { token_list.push( {type: 'variable', contents: res[0].trim() } ); }
-
+        if (res[0]) { token_list.push( new Token('variable', res[0].trim()) ) }
         if (res[1]) { return literal; }
         return undefined;
     }
@@ -53,7 +65,7 @@ function tokenize(input) {
         var res = consume_until("%}"),
             parts = res[0].trim().split(/\s/, 1);
 
-        token_list.push( { type: parts[0], contents: res[0].trim() });
+        token_list.push( new Token(parts[0], res[0].trim()) );
 
         if (res[1]) { return literal; }
         return undefined;
@@ -67,152 +79,6 @@ function tokenize(input) {
 
     return token_list;
 }
-
-
-/*********** PARSER **********************************/
-
-function Parser(input) {
-    this.token_list = tokenize(input);
-    this.indent = 0;
-    this.blocks = {};
-}
-
-function parser_error(e) {
-    return 'Parsing exception: ' + JSON.stringify(e, 0, 2);
-}
-
-function make_nodelist() {
-    var node_list = [];
-    node_list.evaluate = function (context) {
-        return this.reduce( function (p, c) { return p + c(context); }, '');
-    };
-    node_list.only_types = function (/*args*/) {
-        var args = Array.prototype.slice.apply(arguments);
-        return this.filter( function (x) { return args.indexOf(x.type) > -1; } );
-    };
-    node_list.append = function (node, type) {
-        node.type = type;
-        this.push(node);
-    };
-    return node_list;
-}
-
-process.mixin(Parser.prototype, {
-
-    callbacks: template_defaults.callbacks,
-
-    parse: function () {
-    
-        var stoppers = Array.prototype.slice.apply(arguments);
-        var node_list = make_nodelist();
-        var token = this.token_list[0];
-        var callback = null;
-
-        //sys.debug('' + this.indent++ + ':starting parsing with stoppers ' + stoppers.join(', '));
-
-        while (this.token_list.length) {
-            if (stoppers.indexOf(this.token_list[0].type) > -1) {
-                //sys.debug('' + this.indent-- + ':parse done returning at ' + token[0] + ' (length: ' + node_list.length + ')');
-                return node_list;
-            }
-
-            token = this.next_token();
-
-            //sys.debug('' + this.indent + ': ' + token);
-
-            callback = this.callbacks[token.type];
-            if (callback && typeof callback === 'function') {
-                node_list.append( callback(this, token), token.type );
-            } else {
-                //throw parser_error('Unknown tag: ' + token[0]);
-                node_list.append(
-                    template_defaults.nodes.TextNode('[[ UNKNOWN ' + token.type + ' ]]'),
-                    'UNKNOWN'
-                );
-            }
-        }
-        if (stoppers.length) {
-            throw new parser_error('Tag not found: ' + stoppers.join(', '));
-        }
-
-        //sys.debug('' + this.indent-- + ':parse done returning end (length: ' + node_list.length + ')');
-
-        return node_list;
-    },
-
-    next_token: function () {
-        return this.token_list.shift();
-    },
-
-    delete_first_token: function () {
-        this.token_list.shift();
-    }
-
-});
-
-function normalize(value) {
-    if (typeof value !== 'string') { return value; }
-
-    if (value === 'true') { return true; }
-    if (value === 'false') { return false; }
-    if (/^\d/.exec(value)) { return value - 0; }
-
-    var isStringLiteral = /^(["'])(.*?)\1$/.exec(value);
-    if (isStringLiteral) { return isStringLiteral.pop(); }
-
-    return value;
-}
-
-/*************** Context *********************************/
-
-function Context(o) {
-    this.scope = [ o || {} ];
-    this.blocks = {};
-    this.autoescaping = true;
-}
-
-process.mixin(Context.prototype, {
-    get: function (name) {
-
-        var normalized = normalize(name);
-        if (name !== normalized) { return normalized; }
-
-        var parts = name.split('.');
-        name = parts.shift();
-
-        var val, level, next;
-        for (level = 0; level < this.scope.length; level++) {
-            if (this.scope[level].hasOwnProperty(name)) {
-                val = this.scope[level][name];
-                while (parts.length && val) {
-                    next = val[parts.shift()];
-                    if (typeof next === 'function') {
-                        val = next.apply(val);
-                    } else {
-                        val = next;
-                    }
-                }
-
-                if (typeof val === 'function') {
-                    return val();
-                } else { 
-                    return val;
-                }
-            }
-        }
-
-        return '';
-    },
-    set: function (name, value) {
-        this.scope[0][name] = value;
-    },
-    push: function (o) {
-        this.scope.unshift(o || {});
-    },
-    pop: function () {
-        return this.scope.shift();
-    },
-});
 
 /*********** FilterExpression **************************/
 
@@ -307,7 +173,155 @@ process.mixin(FilterExpression.prototype, {
     }
 });
 
-exports.FilterExpression = FilterExpression;
+/*********** PARSER **********************************/
+
+function Parser(input) {
+    this.token_list = tokenize(input);
+    this.indent = 0;
+    this.blocks = {};
+}
+
+function parser_error(e) {
+    return 'Parsing exception: ' + JSON.stringify(e, 0, 2);
+}
+
+function make_nodelist() {
+    var node_list = [];
+    node_list.evaluate = function (context) {
+        return this.reduce( function (p, c) { return p + c(context); }, '');
+    };
+    node_list.only_types = function (/*args*/) {
+        var args = Array.prototype.slice.apply(arguments);
+        return this.filter( function (x) { return args.indexOf(x.type) > -1; } );
+    };
+    node_list.append = function (node, type) {
+        node.type = type;
+        this.push(node);
+    };
+    return node_list;
+}
+
+process.mixin(Parser.prototype, {
+
+    callbacks: template_defaults.callbacks,
+
+    parse: function () {
+    
+        var stoppers = Array.prototype.slice.apply(arguments);
+        var node_list = make_nodelist();
+        var token = this.token_list[0];
+        var callback = null;
+
+        //sys.debug('' + this.indent++ + ':starting parsing with stoppers ' + stoppers.join(', '));
+
+        while (this.token_list.length) {
+            if (stoppers.indexOf(this.token_list[0].type) > -1) {
+                //sys.debug('' + this.indent-- + ':parse done returning at ' + token[0] + ' (length: ' + node_list.length + ')');
+                return node_list;
+            }
+
+            token = this.next_token();
+
+            //sys.debug('' + this.indent + ': ' + token);
+
+            callback = this.callbacks[token.type];
+            if (callback && typeof callback === 'function') {
+                node_list.append( callback(this, token), token.type );
+            } else {
+                //throw parser_error('Unknown tag: ' + token[0]);
+                node_list.append(
+                    template_defaults.nodes.TextNode('[[ UNKNOWN ' + token.type + ' ]]'),
+                    'UNKNOWN'
+                );
+            }
+        }
+        if (stoppers.length) {
+            throw new parser_error('Tag not found: ' + stoppers.join(', '));
+        }
+
+        //sys.debug('' + this.indent-- + ':parse done returning end (length: ' + node_list.length + ')');
+
+        return node_list;
+    },
+
+    next_token: function () {
+        return this.token_list.shift();
+    },
+
+    delete_first_token: function () {
+        this.token_list.shift();
+    },
+
+    make_filterexpression: function (expression, constant) {
+        return new FilterExpression(expression, constant);
+    }
+
+});
+
+function normalize(value) {
+    if (typeof value !== 'string') { return value; }
+
+    if (value === 'true') { return true; }
+    if (value === 'false') { return false; }
+    if (/^\d/.exec(value)) { return value - 0; }
+
+    var isStringLiteral = /^(["'])(.*?)\1$/.exec(value);
+    if (isStringLiteral) { return isStringLiteral.pop(); }
+
+    return value;
+}
+
+/*************** Context *********************************/
+
+function Context(o) {
+    this.scope = [ o || {} ];
+    this.extends = '';
+    this.blocks = {};
+    this.autoescaping = true;
+}
+
+process.mixin(Context.prototype, {
+    get: function (name) {
+
+        var normalized = normalize(name);
+        if (name !== normalized) { return normalized; }
+
+        var parts = name.split('.');
+        name = parts.shift();
+
+        var val, level, next;
+        for (level = 0; level < this.scope.length; level++) {
+            if (this.scope[level].hasOwnProperty(name)) {
+                val = this.scope[level][name];
+                while (parts.length && val) {
+                    next = val[parts.shift()];
+                    if (typeof next === 'function') {
+                        val = next.apply(val);
+                    } else {
+                        val = next;
+                    }
+                }
+
+                if (typeof val === 'function') {
+                    return val();
+                } else { 
+                    return val;
+                }
+            }
+        }
+
+        return '';
+    },
+    set: function (name, value) {
+        this.scope[0][name] = value;
+    },
+    push: function (o) {
+        this.scope.unshift(o || {});
+    },
+    pop: function () {
+        return this.scope.shift();
+    },
+});
 
 
 /*********** Template **********************************/
@@ -321,7 +335,7 @@ process.mixin(Template.prototype, {
     render: function (o) {
 
         var context = (o instanceof Context) ? o : new Context(o || {});
-        context.extends = false;
+        context.extends = '';
 
         var rendered = this.node_list.evaluate(context);
 
@@ -342,16 +356,12 @@ exports.parse = function (input) {
     return new Template(input);
 };
 
-// TODO: Make this a property on a token class
-function split_token(input) {
-    return utils.string.smart_split(input);
-}
-exports.split_token = split_token;
-
-
 
 // exported for test
 exports.Context = Context;
+exports.FilterExpression = FilterExpression;
 exports.tokenize = tokenize;
+
+
 
 
