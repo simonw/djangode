@@ -10,7 +10,6 @@ var utils = require('utils/utils');
         iriencode
 
     Not implemented (yet):
-        time
         timesince
         timeuntil
         unordered_list
@@ -21,7 +20,6 @@ var utils = require('utils/utils');
         yesno
 
 NOTE:
-    date() filter is not lozalized and has a few gotchas...
     stringformat() filter is regular sprintf compliant and doesn't have real python syntax
 
 Missing tags:
@@ -55,11 +53,20 @@ var filters = exports.filters = {
     },
     addslashes: function (value, arg) { return utils.string.add_slashes("" + value); },
     capfirst: function (value, arg) { return utils.string.cap_first("" + value); },
-    center: function (value, arg) { return utils.string.center("" + value, arg); },
+    center: function (value, arg) { return utils.string.center("" + value, arg - 0); },
     cut: function (value, arg) { return ("" + value).replace(new RegExp(arg, 'g'), ""); },
-    date: function (value, arg) { return (value instanceof Date) ? utils.date.date(arg, value) : ''; },
-    'default': function (value, arg) { return value ? value : arg; },
-    default_if_none: function (value, arg) { return (value === null || value === undefined) ? arg : value; },
+    date: function (value, arg) {
+        // TODO: this filter may be unsafe...
+        return (value instanceof Date) ? utils.date.format_date(value, arg) : '';
+    },
+    'default': function (value, arg) {
+        // TODO: this filter may be unsafe...
+        return value ? value : arg;
+    },
+    default_if_none: function (value, arg) {
+        // TODO: this filter may be unsafe...
+        return (value === null || value === undefined) ? arg : value;
+    },
 
     dictsort: function (value, arg) {
         var clone = value.slice(0);
@@ -94,7 +101,7 @@ var filters = exports.filters = {
         return ("" + value).replace('&', '&amp;');
     },
     floatformat: function (value, arg) {
-        arg = arg || -1;
+        arg = arg - 0 || -1;
         var num = value - 0,
             show_zeroes = arg > 0,
             fix = Math.abs(arg);
@@ -112,7 +119,7 @@ var filters = exports.filters = {
         return utils.html.escape("" + value);
     },
     get_digit: function (value, arg) {
-        if (typeof value !== 'number' || typeof arg !== 'number' || typeof arg < 1) { return value; }
+        if (typeof value !== 'number' || typeof arg !== 'number' || arg < 1) { return value; }
         var s = "" + value;
         return s[s.length - arg] - 0;
     },
@@ -120,7 +127,10 @@ var filters = exports.filters = {
         // TODO: implement iriencode filter
         throw "iri encoding is not implemented";
     },
-    join: function (value, arg) { return (value instanceof Array) ? value.join(arg) : ''; },
+    join: function (value, arg) {
+        // TODO: this filter may be unsafe...
+        return (value instanceof Array) ? value.join(arg) : '';
+    },
     last: function (value, arg) { return ((value instanceof Array) && value.length) ? value[value.length - 1] : ''; },
     length: function (value, arg) { return value.length ? value.length : 0; },
     length_is: function (value, arg) { return value.length === arg; },
@@ -149,6 +159,7 @@ var filters = exports.filters = {
         return out;
     },
     ljust: function (value, arg) {
+        arg = arg - 0;
         try {
             return utils.string.sprintf('%-' + arg + 's', value).substr(0, arg);
         } catch (e) {
@@ -166,6 +177,7 @@ var filters = exports.filters = {
         });
     },
     pluralize: function (value, arg) {
+        // TODO: this filter may not be safe
         value = Number(value);
         var plural = arg ? String(arg).split(',') : ['', 's'];
         if (plural.length === 1) { plural.unshift(''); }
@@ -220,6 +232,7 @@ var filters = exports.filters = {
         return String(value).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
     },
     stringformat: function (value, arg) {
+        // TODO: this filter may not be safe
         try { return utils.string.sprintf('%' + arg, value); } catch (e) { return ''; }
     },
     striptags: function (value, arg, safety) {
@@ -229,12 +242,16 @@ var filters = exports.filters = {
     title: function (value, arg) {
         return utils.string.titleCaps( String(value) );
     },
+    time: function (value, arg) {
+        // TODO: this filter may not be safe
+        return (value instanceof Date) ? utils.date.format_time(value, arg) : '';
+    },
     truncatewords: function (value, arg) {
         return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
     },
     truncatewords_html: function (value, arg, safety) {
         safety.is_safe = true;
-        return utils.html.truncate_html_words(value, arg);
+        return utils.html.truncate_html_words(value, arg - 0);
     },
     upper: function (value, arg) {
         return (value + '').toUpperCase();
@@ -517,7 +534,7 @@ var callbacks = exports.callbacks = {
         var parts = token.split_contents();
         if (parts[0] !== 'filter' || parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
 
-        var expr = parser.make_filterexpression('|' + parts[1], ' ');
+        var expr = parser.make_filterexpression('|' + parts[1]);
 
         var node_list = parser.parse('endfilter');
         parser.delete_first_token();

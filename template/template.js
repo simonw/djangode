@@ -7,6 +7,20 @@ var utils = require('utils/utils');
 var template_defaults = require('template/template_defaults');
 var template_loader = require('template/loader');
 
+
+function normalize(value) {
+    if (typeof value !== 'string') { return value; }
+
+    if (value === 'true') { return true; }
+    if (value === 'false') { return false; }
+    if (/^\d/.exec(value)) { return value - 0; }
+
+    var isStringLiteral = /^(["'])(.*?)\1$/.exec(value);
+    if (isStringLiteral) { return isStringLiteral.pop(); }
+
+    return value;
+}
+
 /***************** TOKEN **********************************/
 
 function Token(type, contents) {
@@ -46,7 +60,7 @@ function tokenize(input) {
     function literal() {
         var res = consume_until("{{", "{%");
 
-        if (res[0]) { token_list.push( new Token('text', res[0]) ) }
+        if (res[0]) { token_list.push( new Token('text', res[0]) ); }
         
         if (res[1] === "{{") { return variable_tag; }
         if (res[1] === "{%") { return template_tag; }
@@ -56,7 +70,7 @@ function tokenize(input) {
     function variable_tag() {
         var res = consume_until("}}");
 
-        if (res[0]) { token_list.push( new Token('variable', res[0].trim()) ) }
+        if (res[0]) { token_list.push( new Token('variable', res[0].trim()) ); }
         if (res[1]) { return literal; }
         return undefined;
     }
@@ -82,58 +96,71 @@ function tokenize(input) {
 
 /*********** FilterExpression **************************/
 
+// groups are: 1=variable, 2=constant, 3=filter_name, 4=filter_constant_arg, 5=filter_variable_arg
+var filter_re = /("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')|([\w\.]+|[\-+\.]?\d[\d\.e]*)|(?:\|(\w+)(?::(?:("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')|([\w\.]+|[\-+\.]?\d[\d\.e]*)))?)/g;
+
 var FilterExpression = function (expression, constant) {
 
-    // groups 1 = variable/constant, 2 = arg name, 3 = arg value
-    this.re = /(^"[^"\\]*(?:\\.[^"\\]*)*"|^[\w\.]+)?(?:\|(\w+\b)(?::("[^"\\]*(?:\\.[^"\\]*)*"|[^\|\s]+))?)?(?=\S|$)/g;
-    this.re.lastIndex = 0;
-
-    var parsed = this.consume(expression);
-    if (!parsed) {
-        throw this.error(expression);
-    }
-    if (constant) {
-        if (parsed.variable) {
-            throw this.error(expression); // did not expect variable when constant is defined...
-        } else {
-            this.constant = constant;
-        }
-    } else {
-        if (parsed.variable) {
-            if (parsed.variable !== normalize(parsed.variable)) {
-                // if normalize changed the variable it must be some form of constant
-                this.constant = normalize(parsed.variable);
-            } else {
-                this.variable = parsed.variable;
-            }
-        } else {
-            throw this.error(expression);
-        }
-    }
+    filter_re.lastIndex = 0;
 
     this.filter_list = [];
 
-    while (parsed && parsed.filter_name) {
-        this.filter_list.push( { name: parsed.filter_name, arg: normalize(parsed.filter_arg) } );
-        parsed = this.consume(expression);
+    var parsed = this.consume(expression);
+
+    //sys.debug(expression + ' => ' + sys.inspect( parsed ) );
+
+    if (!parsed) {
+        throw this.error(expression);
+    }
+    if (constant !== undefined) {
+        if (parsed.variable !== undefined || parsed.constant !== undefined) {
+            throw this.error(expression + ' - did not expect variable when constant is defined');
+        }
+        parsed.constant = constant;
     }
 
-    if (expression.length !== this.re.lastIndex) {
-        throw this.error(expression + ' - 4');
+    while (parsed) {
+        if (parsed.constant !== undefined && parsed.variable !== undefined) {
+            throw this.error(expression + ' - did not expect both variable and constant');
+        }
+        if ((parsed.constant !== undefined || parsed.variable !== undefined) &&
+            (this.variable !== undefined || this.constant !== undefined)) {
+            throw this.error(expression + ' - did not expect variable or constant at this point');
+        }
+        if (parsed.constant !== undefined) { this.constant = normalize(parsed.constant); }
+        if (parsed.variable !== undefined) { this.variable = normalize(parsed.variable); }
+
+        if (parsed.filter_name) { 
+            this.filter_list.push( this.make_filter_token(parsed) );
+        }
+
+        parsed = this.consume(expression);
+
+        //sys.debug(expression + ' => ' + sys.inspect( parsed ) );
     }
+
+    //sys.debug(expression + ' => ' + sys.inspect( this ) );
+
 };
 
 process.mixin(FilterExpression.prototype, {
 
     consume: function (expression) {
-        var start = this.re.lastIndex;
-        var m = this.re.exec(expression);
+        var m = filter_re.exec(expression);
+        return m ?
+            { constant: m[1], variable: m[2], filter_name: m[3], filter_arg: m[4], filter_var_arg: m[5] }
+            : null;
+    },
 
-        return m[0] ? { variable: m[1], filter_name: m[2], filter_arg: m[3] } : null;
+    make_filter_token: function (parsed) {
+        var token = { name: parsed.filter_name };
+        if (parsed.filter_arg !== undefined) { token.arg = normalize(parsed.filter_arg); }
+        if (parsed.filter_var_arg !== undefined) { token.var_arg = normalize(parsed.filter_var_arg); }
+        return token;
     },
 
     error: function (s) {
-        throw s + "\ncan't parse filterexception at char " + this.re.lastIndex + ". Make sure there is no spaces between filters or arguments\n";
+        throw s + "\ncan't parse filterexception at char " + filter_re.lastIndex + ". Make sure there is no spaces between filters or arguments\n";
     },
 
     resolve: function (context) {
@@ -146,15 +173,22 @@ process.mixin(FilterExpression.prototype, {
 
         var safety = {
             is_safe: false,
-            must_escape: context.autoescaping,
+            must_escape: context.autoescaping
         };
 
         var out = this.filter_list.reduce( function (p,c) {
 
             var filter = template_defaults.filters[c.name];
 
+            var arg;
+            if (c.arg) {
+                arg = c.arg;
+            } else if (c.var_arg) {
+                arg = context.get(c.var_arg);
+            }
+
             if ( filter && typeof filter === 'function') {
-                return filter(p, c.arg, safety);
+                return filter(p, arg, safety);
             } else {
                 // throw 'Cannot find filter';
                 sys.debug('Cannot find filter ' + c.name);
@@ -164,7 +198,7 @@ process.mixin(FilterExpression.prototype, {
 
         if (safety.must_escape && !safety.is_safe) {
             if (typeof out === 'string') {
-                return utils.html.escape(out)
+                return utils.html.escape(out);
             } else if (out instanceof Array) {
                 return out.map( function (o) { return typeof o === 'string' ? utils.html.escape(o) : o; } );
             }
@@ -258,19 +292,6 @@ process.mixin(Parser.prototype, {
 
 });
 
-function normalize(value) {
-    if (typeof value !== 'string') { return value; }
-
-    if (value === 'true') { return true; }
-    if (value === 'false') { return false; }
-    if (/^\d/.exec(value)) { return value - 0; }
-
-    var isStringLiteral = /^(["'])(.*?)\1$/.exec(value);
-    if (isStringLiteral) { return isStringLiteral.pop(); }
-
-    return value;
-}
-
 /*************** Context *********************************/
 
 function Context(o) {
@@ -282,6 +303,8 @@ function Context(o) {
 
 process.mixin(Context.prototype, {
     get: function (name) {
+
+        if (typeof name !== 'string') { return name; }
 
         var normalized = normalize(name);
         if (name !== normalized) { return normalized; }
@@ -320,7 +343,7 @@ process.mixin(Context.prototype, {
     },
     pop: function () {
         return this.scope.shift();
-    },
+    }
 });
 
 
@@ -345,7 +368,7 @@ process.mixin(Template.prototype, {
         }
 
         return rendered;
-    },
+    }
 });
 
 /********************************************************/

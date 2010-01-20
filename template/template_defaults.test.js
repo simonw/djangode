@@ -387,5 +387,14 @@ testcase('truncatewords_html');
         filters.truncatewords_html('<p>Joel is a slug</p>', 2, safety);
         assertEquals(true, safety.is_safe);
     });
+testcase('time');
+    test('correctly format time', function () {
+        var t = new Date();
+        t.setHours('18');
+        t.setMinutes('12');
+        t.setSeconds('14');
+        assertEquals('18:12:14', filters.time(t, 'H:i:s'));
+        assertEquals('', filters.date('hest', 'H:i:s'));
+    });
 run();
 

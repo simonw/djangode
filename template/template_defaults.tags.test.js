@@ -28,7 +28,8 @@ testcase('variable')
             bool: false,
             list: [1,2,'giraf',4],
             func: function () { return 'tobis'; },
-            obj: { a: 1, b: 2, c: { d: 23, e: { f: 'laks' } } }
+            obj: { a: 1, b: 2, c: { d: 23, e: { f: 'laks' } } },
+            qstr: '"hest"'
         };
         assertEquals('100', template.parse('{{ 100 }}').render(o));
         assertEquals('18', template.parse('{{ num }}').render(o));
@@ -39,12 +40,13 @@ testcase('variable')
         assertEquals('1', template.parse('{{ obj.a }}').render(o));
         assertEquals('2', template.parse('{{ obj.b }}').render(o));
         assertEquals('laks', template.parse('{{ obj.c.e.f }}').render(o));
+        assertEquals('&qout;hest&qout;', template.parse('{{ qstr }}').render(o));
     })
 
     test('should execute filters', function () {
         assertEquals('HEST', template.parse('{{ "hest"|upper }}').render());
         assertEquals('16', template.parse('{{ 10|add:"6" }}').render());
-        assertEquals('0', template.parse('{{ 6|add:"6"|add:"-12" }}').render());
+        assertEquals('0', template.parse('{{ 6|add:6|add:"-12" }}').render());
     })
 
 testcase('ifnode')
@@ -178,5 +180,5 @@ testcase('with')
         assertEquals(1, cnt);
     });
 
-run();
+run(true);
 

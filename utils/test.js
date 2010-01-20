@@ -64,45 +64,54 @@ exports.dsl = {
         testcases[0].teardown = func;
     },
 
-    run: function () {
+    run: function (stop_on_error) {
 
         var count = 0, failed = 0, errors = 0;
 
         testcases.reverse();
 
-        testcases.forEach( function (testcase) {
+        try { 
 
-            sys.puts('\n[Testcase: ' + testcase.name + ']');
+            testcases.forEach( function (testcase) {
 
-            testcase.tests.forEach( function (test) {
+                sys.puts('\n[Testcase: ' + testcase.name + ']');
 
-                count++;
-                
-                var context = testcase.setup ? testcase.setup() : {};
+                testcase.tests.forEach( function (test) {
 
-                try {
-                    test.body(context);
-                    sys.puts(' [OK] ' + test.name + ': passed');
-                } catch (e) {
-                    if (e instanceof AssertFailedException) {
-                        sys.puts(' [--] ' + test.name + ': failed. ' + e.message);
-                        failed++;
-                    } else {
-                        sys.print(' [!!] ' + test.name + ': error. ');
-                        if (e.stack && e.type) {
-                            sys.puts(e.type + '\n' +  e.stack);
+                    count++;
+                    
+                    var context = testcase.setup ? testcase.setup() : {};
+
+                    try {
+                        test.body(context);
+                        sys.puts(' [OK] ' + test.name + ': passed');
+                    } catch (e) {
+                        if (e instanceof AssertFailedException) {
+                            sys.puts(' [--] ' + test.name + ': failed. ' + e.message);
+                            failed++;
                         } else {
-                            sys.puts(JSON.stringify(e, 0, 2));
+                            sys.print(' [!!] ' + test.name + ': error. ');
+                            if (e.stack && e.type) {
+                                sys.puts(e.type + '\n' +  e.stack);
+                            } else {
+                                sys.puts(JSON.stringify(e, 0, 2));
+                            }
+                            errors++;
                         }
-                        errors++;
+                        if (stop_on_error) { throw 'stopping on first error'; }
                     }
-                }
 
-                if (testcase.teardown) { testcase.teardown(context); }
+                    if (testcase.teardown) { testcase.teardown(context); }
+                });
+                sys.puts('----');
             });
-            sys.puts('----');
-
-        });
+        } catch (e) {
+            if (e === 'stopping on first error') {
+                sys.puts(e);
+            } else {
+                throw e;
+            }
+        }
         sys.puts('\nTotal: ' + count + ', Failures: ' + failed + ', Errors: ' + errors + '');
     },
 

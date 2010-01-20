@@ -36,7 +36,7 @@ testcase('Filter Expression tests');
             new FilterExpression("item.subitem|add|sub")
         );
         assertEquals(
-            { variable: 'item', filter_list: [ { name: 'add', arg: 5 }, { name: 'sub', arg: "2" } ] },
+            { variable: 'item', filter_list: [ { name: 'add', var_arg: 5 }, { name: 'sub', arg: "2" } ] },
             new FilterExpression('item|add:5|sub:"2"')
         );
         assertEquals(
@@ -48,12 +48,16 @@ testcase('Filter Expression tests');
             new FilterExpression('person_name')
         );
         assertEquals(
-            { constant: 335, filter_list: [{name: 'test'}] },
+            { variable: 335, filter_list: [{name: 'test'}] },
             new FilterExpression('335|test')
         );
         assertEquals(
             { constant: "hest", filter_list: [{name: 'test'}] },
             new FilterExpression('"hest"|test')
+        );
+        assertEquals(
+            { variable: "item", filter_list: [{name: 'add', var_arg: 'other' }] },
+            new FilterExpression('item|add:other')
         );
     });
 
