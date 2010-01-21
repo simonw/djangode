@@ -60,4 +60,30 @@ testcase('longer formats');
         assertEquals('Wednesday 2nd of December 1981 06:31:45 PM', format_date(d, 'l jS \\o\\f F Y h:i:s A'));
     });
 
+testcase('timesince');
+    test('correct results for known values', function () {
+        var now = new Date("Wed Dec 02 1981 18:31:45 GMT+0100 (CET)"); // Random time on Britney Spears birthday :-)
+
+        var date = new Date("Wed Dec 02 1981 15:15:45 GMT+0100 (CET)");
+        assertEquals('3 hours, 16 minutes', timesince(date, now));
+
+        date = new Date("Wed Nov 22 1981 15:15:45 GMT+0100 (CET)");
+        assertEquals('1 week, 3 days', timesince(date, now));
+
+        date = new Date("Sun Oct 19 1981 18:10:53 GMT+0100 (CET)");
+        assertEquals('1 month, 2 weeks', timesince(date, now));
+
+        date = new Date("Sat Dec 29 1970 04:52:13 GMT+0100 (CET)");
+        assertEquals('10 years, 11 months', timesince(date, now));
+
+        date = new Date("Wed Nov 13 1980 10:36:13 GMT+0100 (CET)");
+        assertEquals('1 year', timesince(date, now));
+        
+        date = new Date("Wed Dec 02 1981 18:29:40 GMT+0100 (CET)"); // Random time on Britney Spears birthday :-)
+        assertEquals('2 minutes', timesince(date, now));
+
+        date = new Date("Wed Dec 02 1983 18:29:40 GMT+0100 (CET)"); // Random time on Britney Spears birthday :-)
+        assertEquals('0 minutes', timesince(date, now));
+    });
+
 run();

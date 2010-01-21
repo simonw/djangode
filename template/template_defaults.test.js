@@ -396,5 +396,51 @@ testcase('time');
         assertEquals('18:12:14', filters.time(t, 'H:i:s'));
         assertEquals('', filters.date('hest', 'H:i:s'));
     });
+testcase('timesince');
+    test('should return time since', function () {
+        var blog_date = new Date("1 June 2006 00:00:00");
+        var comment_date = new Date("1 June 2006 08:00:00");
+        assertEquals('8 hours', filters.timesince(blog_date, comment_date));
+    });
+testcase('timeuntil');
+    test('should return time since', function () {
+        var today = new Date("1 June 2006");
+        var from_date = new Date("22 June 2006");
+        var conference_date = new Date("29 June 2006");
+        assertEquals('4 weeks', filters.timeuntil(conference_date, today));
+        assertEquals('1 week', filters.timeuntil(conference_date, from_date));
+    });
+testcase('urlize');
+    test('should urlize text', function () {
+        assertEquals(
+            'Check out <a href="http://www.djangoproject.com">www.djangoproject.com</a>',
+            filters.urlize('Check out www.djangoproject.com', null, {})
+        );
+    });
+    test('should escape if required', function () {
+        var safety = { must_escape: true };
+        assertEquals('hest &amp; giraf', filters.urlize('hest & giraf', null, safety));
+    });
+    test('should mark output as safe if escaped', function () {
+        var safety = { must_escape: true };
+        filters.urlize('hest', null, safety);
+        assertEquals(true, safety.is_safe);
+    });
+testcase('urlizetrunc');
+    test('should urlize text and truncate', function () {
+        assertEquals(
+            'Check out <a href="http://www.djangoproject.com">www.djangopr...</a>',
+            filters.urlizetrunc('Check out www.djangoproject.com', 15, {})
+        );
+    });
+    test('should escape if required', function () {
+        var safety = { must_escape: true };
+        assertEquals('hest &amp; giraf', filters.urlizetrunc('hest & giraf', 15, safety));
+    });
+    test('should mark output as safe if escaped', function () {
+        var safety = { must_escape: true };
+        filters.urlizetrunc('hest', 15, safety);
+        assertEquals(true, safety.is_safe);
+    });
 run();
 

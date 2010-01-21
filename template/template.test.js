@@ -97,6 +97,11 @@ testcase('Filter Expression tests');
         var expr = new FilterExpression("test|escape|upper");
         assertEquals('&lt;SCRIPT&gt;', expr.resolve(context));
     });
+    test('filterexpression should work with variable as arg', function () {
+        var context = new Context({test: 4, arg: 38 });
+        var expr = new FilterExpression("test|add:arg");
+        assertEquals(42, expr.resolve(context));
+    });
 
 testcase('Context test');
     setup( function () {

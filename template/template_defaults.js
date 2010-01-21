@@ -10,11 +10,7 @@ var utils = require('utils/utils');
         iriencode
 
     Not implemented (yet):
-        timesince
-        timeuntil
         unordered_list
-        urlize
-        urlizetrunc
         wordcount
         wordwrap
         yesno
@@ -246,6 +242,16 @@ var filters = exports.filters = {
         // TODO: this filter may not be safe
         return (value instanceof Date) ? utils.date.format_time(value, arg) : '';
     },
+    timesince: function (value, arg) {
+        value = new Date(value), arg = new Date(arg);
+        if (isNaN(value) || isNaN(arg)) { return ''; }
+        return utils.date.timesince(value, arg);
+    },
+    timeuntil: function (value, arg) {
+        value = new Date(value), arg = new Date(arg);
+        if (isNaN(value) || isNaN(arg)) { return ''; }
+        return utils.date.timeuntil(value, arg);
+    },
     truncatewords: function (value, arg) {
         return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
     },
@@ -258,6 +264,22 @@ var filters = exports.filters = {
     },
     urlencode: function (value, arg) {
         return escape(value);
+    },
+    urlize: function (value, arg, safety) {
+        if (!safety.is_safe && safety.must_escape) {
+            var out = utils.html.urlize(value + "", { escape: true });
+            safety.is_safe = true;
+            return out;
+        }
+        return utils.html.urlize(value + "");
+    },
+    urlizetrunc: function (value, arg, safety) {
+        if (!safety.is_safe && safety.must_escape) {
+            var out = utils.html.urlize(value + "", { escape: true, limit: arg });
+            safety.is_safe = true;
+            return out;
+        }
+        return utils.html.urlize(value + "", { limit: arg });
     }
 };
 
@@ -597,8 +619,6 @@ var callbacks = exports.callbacks = {
     }
 
 };
-
-
 
 
 

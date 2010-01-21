@@ -101,3 +101,73 @@ var truncate_html_words = exports.truncate_html_words = function (input, cnt) {
 
 
 
+var punctuation_re = /^((?:\(|<|&lt;)*)(.*?)((?:\.|,|\)|>|\n|&gt;)*)$/;
+var simple_email_re = /^\S+@[a-zA-Z0-9._\-]+\.[a-zA-Z0-9._\-]+$/;
+
+function trim_url(url, limit) {
+    if (limit === undefined || limit > url.length) { return url; }
+    return url.substr(0, limit - 3 > 0 ? limit - 3 : 0) + '...';
+}
+
+/* Function: urlize(text, options)
+        Converts all urls found in text into links (<a href="URL">URL</a>).
+    Arguments:
+        text - string, the text to convert.
+        options - optional, see options
+    Options:
+        escape - boolean, if true pass the string through escape()
+        limit - number, if defined the shown urls will be truncated with '...' at this length
+        nofollow - boolean, if true add rel="nofollow" to <a> tags
+*/
+function urlize(text, options) {
+    options = options || {};
+
+    var words = text.split(/(\s+)/g);
+    var nofollow = options.nofollow ? ' rel="nofollow"' : '';
+
+    words.forEach( function (word, i, words) {
+        var match;
+        if (word.indexOf('.') > -1 || word.indexOf('@') > -1 || word.indexOf(':') > -1) {
+            match = punctuation_re(word);
+        }
+
+        if (match) {
+            var url, lead = match[1], middle = match[2], trail = match[3];
+            if (middle.substr(0,7) === 'http://' || middle.substr(0,8) === 'https://') {
+                url = encodeURI(middle);
+            } else if (middle.substr(0,4) === 'www.' || (
+              middle.indexOf('@') === -1 && middle && middle[0].match(/[a-z0-9]/i) &&
+              (middle.substr(-4) === '.org' || middle.substr(-4) === '.net' || middle.substr(-4) === '.com'))) {
+                url = encodeURI('http://' + middle);
+            } else if (middle.indexOf('@') > -1 && middle.indexOf(':') === -1 && simple_email_re(middle)) {
+                url = 'mailto:' + middle;
+                nofollow = '';
+            }
+
+            if (url) {
+                var trimmed = trim_url(middle, options.limit);
+                if (options.escape) {
+                    lead = escape(lead);
+                    trail = escape(trail);
+                    url = escape(url);
+                    trimmed = escape(trimmed);
+                }
+                middle = '<a href="' + url + '"' + nofollow + '>' + trimmed + '</a>';
+                words[i] = lead + middle + trail;
+            }
+        } else if (options.escape) {
+            words[i] = escape(word);
+        }
+    });
+    return words.join('');
+}
+
+exports.urlize = urlize;
+
+
+
+
+
+
+
+

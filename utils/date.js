@@ -9,7 +9,8 @@ var i18n = {
                  "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         months_ap: ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'],
         ordinal_suffix: { 1: 'st', 2: 'nd', 3: 'rd', 21: 'st', 22: 'nd', 23: 'rd', 31: 'st', 'default': 'th' },
-        special_times: ['midnight', 'noon']
+        special_times: ['midnight', 'noon'],
+        timespan: ['year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days', 'hour', 'hours', 'minute', 'minutes']
     }
 };
 
@@ -149,6 +150,8 @@ function format_date(date, format) {
     });
 }
 
+exports.format_date = format_date;
+
 function format_time(time, format) {
     return format.replace(time_flags_re, function (s, escape_val) {
         if (escape_val) { return escape_val.replace(/\\/g, ''); }
@@ -160,8 +163,60 @@ function format_time(time, format) {
     });
 }
 
-exports.format_date = format_date;
 exports.format_time = format_time;
+
+/*************** TIMESPAN ********************************************/
+
+
+function timespan_to_str(timespan) {
+
+    function map_chunk(cnt, idx) {
+        return cnt + ' ' + cur_i18n.timespan[ cnt === 1 ? idx * 2 : idx * 2 + 1]
+    }
+
+    var chunks = [
+        // years
+        1000 * 60 * 60 * 24 * 365,
+        // months
+        1000 * 60 * 60 * 24 * 30,
+        // weeks
+        1000 * 60 * 60 * 24 * 7,
+        // days
+        1000 * 60 * 60 * 24,
+        // hours
+        1000 * 60 * 60,
+        // minutes
+        1000 * 60,    
+    ];
+
+    chunks.forEach(function (x, idx) {
+        chunks[idx] = Math.floor(timespan / x);
+        timespan -= chunks[idx] * x;
+    });
+
+    for (var i = 0; i < chunks.length; i++) {
+        if (chunks[i]) {
+            return map_chunk(chunks[i], i) + (chunks[i+1] ? ', ' + map_chunk(chunks[i+1], i+1) : '');
+        }
+    }
+    return map_chunk(0, chunks.length - 1);
+}
+
+function timesince(date, now) {
+    if (!now) { now = new Date(); }
+    var timespan = now - date;
+    if (timespan < 0) { timespan = 0; }
+    return timespan_to_str(timespan);
+}
+exports.timesince = timesince;
+
+function timeuntil(date, now) {
+    if (!now) { now = new Date(); }
+    var timespan = date - now;
+    if (timespan < 0) { timespan = 0; }
+    return timespan_to_str(timespan);
+}
+exports.timeuntil = timeuntil;
 
 
 
