@@ -1,6 +1,6 @@
 var http = require('http'),
     sys = require('sys'),
-    posix = require('posix')
+    posix = require('posix'),
 	url = require('url');
 
 function extname(path) {
