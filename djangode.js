@@ -55,7 +55,7 @@ function respond(res, body, content_type, status) {
     res.sendHeader(status || 200, {
         'Content-Type': content_type  + '; charset=utf-8'
     });
-    res.sendBody(body);
+    res.sendBody(body, 'utf8');
     res.finish();
 }
 exports.respond = respond;
