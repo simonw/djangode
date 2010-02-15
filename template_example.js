@@ -2,11 +2,9 @@ var posix = require('posix'),
     sys = require('sys'),
     dj = require('djangode'),
     template_system = require('template/template');
-    template_loader = require('template/loader');
-
 
 // set template path
-template_loader.set_path('template-demo');
+template_system.loader.set_path('template-demo');
 
 // context to use when rendering template. In a real app this would likely come from a database
 var test_context = {
@@ -28,12 +26,12 @@ var app = dj.makeApp([
     ['^/(template-demo/.*)$', dj.serveFile],
 
     ['^/template$', function (req, res) {
-        var html = template_loader.load('template.html').render(test_context);
+        var html = template_system.load('template.html').render(test_context);
         dj.respond(res, html);
     }],
 
     ['^/text$', function (req, res) {
-        var html = template_loader.load('template.html').render(test_context);
+        var html = template_system.load('template.html').render(test_context);
         dj.respond(res, html, 'text/plain');
     }]
 ]);

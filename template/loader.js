@@ -3,18 +3,31 @@
 
 var sys = require('sys');
 var posix = require('posix');
-var template = require('template/template');
 
 var cache = {};
-var template_path = '.';
+var template_path = '/tmp';
 
-function load(name) {
-    if (!cache[name]) {
-        var content = posix.cat(template_path + '/' + name).wait();
-        cache[name] = template.parse(content);
+function load(name, parse_function, callback) {
+    if (cache[name] != undefined) {
+        if (callback) {
+            callback(cache[name]);
+        } else {
+            return cache[name];
+        }
+    } else {
+        if (callback) {
+            posix.cat(template_path + '/' + name).addCallback(function(s) {
+                cache[name] = parse_function(s);
+                callback(cache[name]);
+            });
+        } else {
+            var content = posix.cat(template_path + '/' + name).wait();
+            cache[name] = parse_function(content);
+            return cache[name];
+        }
     }
-    return cache[name];
 }
+
 
 function flush() {
     cache = {};

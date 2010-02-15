@@ -1,7 +1,6 @@
 var sys = require('sys');
 var posix = require('posix');
 var template = require('template/template');
-var template_loader = require('template/loader');
 process.mixin(GLOBAL, require('utils/test').dsl);
 process.mixin(GLOBAL, require('template/template_defaults'));
 
@@ -96,8 +95,8 @@ testcase('filter')
 
 testcase('block and extend')
     setup(function () {
-        template_loader.flush();
-        template_loader.set_path('/tmp');
+        template.loader.flush();
+        template.loader.set_path('/tmp');
     })
 
     test('block should parse and evaluate', function () {

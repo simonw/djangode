@@ -2,11 +2,12 @@
 /*global require, process, exports */
 
 var sys = require('sys');
-
 var utils = require('utils/utils');
 var template_defaults = require('template/template_defaults');
 var template_loader = require('template/loader');
 
+exports.loader = template_loader;
+exports.load = function (name, callback) { return template_loader.load(name, exports.parse, callback); };
 
 function normalize(value) {
     if (typeof value !== 'string') { return value; }
@@ -318,6 +319,7 @@ process.mixin(Context.prototype, {
                 val = this.scope[level][name];
                 while (parts.length && val) {
                     next = val[parts.shift()];
+
                     if (typeof next === 'function') {
                         val = next.apply(val);
                     } else {
@@ -363,7 +365,7 @@ process.mixin(Template.prototype, {
         var rendered = this.node_list.evaluate(context);
 
         if (context.extends) {
-            var parent_template = template_loader.load(context.extends);
+            var parent_template = exports.load(context.extends);
             rendered = parent_template.render(context);
         }
 
