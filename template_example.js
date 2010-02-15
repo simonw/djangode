@@ -28,8 +28,9 @@ var app = dj.makeApp([
     ['^/(template-demo/.*)$', dj.serveFile],
 
     ['^/template$', function (req, res) {
-        var html = template_loader.load('template.html').render(test_context);
-        dj.respond(res, html);
+        template_loader.load('template.html', function(t) {
+            dj.respond(res, t.render(test_context));
+        });
     }],
 
     ['^/text$', function (req, res) {

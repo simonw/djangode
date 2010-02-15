@@ -8,12 +8,25 @@ var template = require('template/template');
 var cache = {};
 var template_path = '.';
 
-function load(name) {
-    if (!cache[name]) {
-        var content = posix.cat(template_path + '/' + name).wait();
-        cache[name] = template.parse(content);
+function load(name, callback) {
+    if (cache[name] != undefined) {
+        if (callback) {
+            callback(cache[name]);
+        } else {
+            return cache[name];
+        }
+    } else {
+        if (callback) {
+            posix.cat(template_path + '/' + name).addCallback(function(s) {
+                cache[name] = template.parse(s);
+                callback(cache[name]);
+            });
+        } else {
+            var content = posix.cat(template_path + '/' + name).wait();
+            cache[name] = template.parse(content);
+            return cache[name];
+        }
     }
-    return cache[name];
 }
 
 function flush() {
