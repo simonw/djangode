@@ -1,4 +1,4 @@
-var dj = require('./djangode');
+var dj = require('djangode');
 
 var app = dj.makeApp([
     ['^/$', function(req, res) {

@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+    <head>
+        <title>Ordering notice - node.js test</title>
+    </head>
+    <body>
+        <h1>Ordering notice</h1>
+
+        {{ "test" }}
+
+        <p>Dear {{person_name}},</p>
+
+        <p>Thanks for placing an order from {{ company }}. It's scheduled to
+        ship on {{ ship_date|date:"F j, Y" }}.</p>
+
+        <p>Here are the items you've ordered:</p>
+
+        <ul>
+        {% for item in item_list %}
+            <li>{{ forloop.revcounter0 }}: {{ item }} {{ forloop.counter|add:"1000" }}</li>
+        {% endfor %}
+        </ul>
+
+        {% if ordered_warranty or true or false %}
+            <p>Your warranty information will be included in the packaging.</p>
+        {% else %}
+            <p>You didn't order a warranty, so you're on your own when
+            the products inevitably stop working.</p>
+        {% endif %}
+
+        {{ship.name}}{{ ship.nationality.toUpperCase }}
+
+        <p>Sincerely,<br />{{ company }}</p>
+
+    </body>
+</html>
+

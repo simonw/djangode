@@ -1,7 +1,7 @@
 var http = require('http'),
     sys = require('sys'),
     posix = require('posix'),
-	url = require('url');
+    url = require('url');
 
 function extname(path) {
     var index = path.lastIndexOf('.');
@@ -26,7 +26,10 @@ exports.serveFile = function(req, res, filename) {
             body = data;
             headers = [
                 ['Content-Type', content_type],
-                ['Content-Length', encoding === 'utf8' ? encodeURIComponent(body).replace(/%../g, 'x').length : body.length]
+                ['Content-Length', (encoding === 'utf8')
+                    ? encodeURIComponent(body).replace(/%../g, 'x').length
+                    : body.length
+                ]
             ];
             sys.puts("static file " + filename + " loaded");
             callback();
