@@ -1,5 +1,4 @@
-var posix = require('posix'),
-    sys = require('sys'),
+var sys = require('sys'),
     dj = require('djangode'),
     template_system = require('template/template');
 

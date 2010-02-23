@@ -1,14 +1,13 @@
 var sys = require('sys');
-var posix = require('posix');
+var fs = require('fs');
 var template = require('template/template');
 process.mixin(GLOBAL, require('utils/test').dsl);
 process.mixin(GLOBAL, require('template/template_defaults'));
 
 function write_file(path, content) {
-    var file = posix.open(path,
-        process.O_WRONLY | process.O_TRUNC | process.O_CREAT, 0666).wait();
-    posix.write(file, content).wait();
-    posix.close(file).wait();
+    var file = fs.openSync(path, process.O_WRONLY | process.O_TRUNC | process.O_CREAT, 0666);
+    fs.writeSync(file, content);
+    fs.closeSync(file);
 }
 
 
@@ -178,6 +177,44 @@ testcase('with')
         assertEquals('1:1', t.render(o));
         assertEquals(1, cnt);
     });
+testcase('ifchanged')
+    test('should work as expected', function () {
+        var t = template.parse('{% for item in list %}{% ifchanged %}{{ item }}{% endifchanged %}{%endfor%}');
+        var list = ['hest','giraf','giraf','hestgiraf'];
+        assertEquals('hestgirafhestgiraf', t.render({list: list}));
+    });
+testcase('ifequal')
+    test('should work as expected', function () {
+        var t = template.parse('{% ifequal "hest" "hest" %}giraf{%endifequal %}');
+        assertEquals('giraf', t.render());
+        t = template.parse('{% ifequal item "hest" %}giraf{%endifequal %}');
+        assertEquals('giraf', t.render({item: 'hest' }));
+        t = template.parse('{% ifequal item other %}giraf{%endifequal %}');
+        assertEquals('giraf', t.render({item: 'hest', other: 'hest' }));
+        assertEquals('', t.render({item: 'hest', other: 'laks' }));
+    });
+testcase('ifnotequal')
+    test('should work as expected', function () {
+        var t = template.parse('{% ifnotequal "hest" "giraf" %}laks{%endifnotequal %}');
+        assertEquals('laks', t.render());
 
-run(true);
+        t = template.parse('{% ifnotequal item "giraf" %}laks{%endifnotequal %}');
+        assertEquals('laks', t.render({item: 'hest' }));
+
+        t = template.parse('{% ifnotequal item other %}laks{%endifnotequal %}');
+        assertEquals('laks', t.render({item: 'hest', other: 'giraf' }));
+
+        assertEquals('', t.render({item: 'hest', other: 'hest' }));
+    });
+testcase('now')
+    test('should work as expected', function () {
+        var t = template.parse('{% now "H:i" %}');
+        var date = new Date();
+        var expected = (date.getHours() < 10 ? '0' + date.getHours() : date.getHours()) + ':' +
+                       (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
+        assertEquals(expected, t.render());
+    });
+
+
+run(false);
 

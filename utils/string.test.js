@@ -25,5 +25,9 @@ testcase('titleCaps')
             titleCaps("Q&A With Steve Jobs: 'That's What Happens In Technology'")
         );
     })
+testcase('wrap')
+    test('should wrap text', function () {
+        assertEquals('Joel \nis a \nslug', wordwrap('Joel is a slug', 5));
+    });
 
 run();

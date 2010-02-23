@@ -2,7 +2,7 @@
 /*global require, process, exports, escape */
 
 var sys = require('sys');
-var posix = require('posix');
+var fs = require('fs');
 
 var cache = {};
 var template_path = '/tmp';
@@ -16,12 +16,13 @@ function load(name, parse_function, callback) {
         }
     } else {
         if (callback) {
-            posix.cat(template_path + '/' + name).addCallback(function(s) {
+            fs.readfile(template_path + '/' + name, function (error, s) {
+                if (error) { callback(error); }
                 cache[name] = parse_function(s);
-                callback(cache[name]);
+                callback(false, cache[name]);
             });
         } else {
-            var content = posix.cat(template_path + '/' + name).wait();
+            var content = fs.readFileSync(template_path + '/' + name);
             cache[name] = parse_function(content);
             return cache[name];
         }

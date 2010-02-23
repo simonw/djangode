@@ -238,7 +238,7 @@ function make_nodelist() {
 
 process.mixin(Parser.prototype, {
 
-    callbacks: template_defaults.callbacks,
+    tags: template_defaults.tags,
 
     parse: function () {
     
@@ -259,7 +259,7 @@ process.mixin(Parser.prototype, {
 
             //sys.debug('' + this.indent + ': ' + token);
 
-            callback = this.callbacks[token.type];
+            callback = this.tags[token.type];
             if (callback && typeof callback === 'function') {
                 node_list.append( callback(this, token), token.type );
             } else {

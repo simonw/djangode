@@ -164,7 +164,7 @@ testcase('length_is filter')
         assertEquals(true, filters.length_is([1,2,3,4,5], 5));
         assertEquals(true, filters.length_is('hest', 4));
     });
-    test('should fail on incorrect length or bad arguments', function () {
+    test('should return false on incorrect length or bad arguments', function () {
         assertEquals(false, filters.length_is([1,2,3,4,5], 2));
         assertEquals(false, filters.length_is('hest', 16));
         assertEquals(false, filters.length_is(16, 4));
@@ -441,6 +441,18 @@ testcase('urlizetrunc');
         var safety = { must_escape: true };
         filters.urlizetrunc('hest', 15, safety);
         assertEquals(true, safety.is_safe);
+    });
+testcase('wordcount')
+    test('should count words', function () {
+        assertEquals(6, filters.wordcount('I am not an atomic playboy'));
+    });
+testcase('yesno')
+    test('should return correct value', function () {
+        assertEquals('yeah', filters.yesno(true, "yeah,no,maybe"));
+        assertEquals('no', filters.yesno(false, "yeah,no,maybe"));
+        assertEquals('maybe', filters.yesno(null, "yeah,no,maybe"));
+        assertEquals('maybe', filters.yesno(undefined, "yeah,no,maybe"));
+        assertEquals('no', filters.yesno(undefined, "yeah,no"));
     });
 run();
 

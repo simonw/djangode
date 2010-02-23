@@ -3,4 +3,5 @@
 exports.string = require('utils/string');
 exports.date = require('utils/date');
 exports.html = require('utils/html');
+exports.iter = require('utils/iter');
 

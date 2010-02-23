@@ -11,9 +11,6 @@ var utils = require('utils/utils');
 
     Not implemented (yet):
         unordered_list
-        wordcount
-        wordwrap
-        yesno
 
 NOTE:
     stringformat() filter is regular sprintf compliant and doesn't have real python syntax
@@ -27,10 +24,6 @@ Missing tags:
 
     debug
 
-    ifchanged
-    ifequal
-    ifnotequal
-    now
     regroup
     spaceless
     templatetag
@@ -243,12 +236,16 @@ var filters = exports.filters = {
         return (value instanceof Date) ? utils.date.format_time(value, arg) : '';
     },
     timesince: function (value, arg) {
-        value = new Date(value), arg = new Date(arg);
+        // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
+        value = new Date(value);
+        arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
         return utils.date.timesince(value, arg);
     },
     timeuntil: function (value, arg) {
-        value = new Date(value), arg = new Date(arg);
+        // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
+        value = new Date(value);
+        arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
         return utils.date.timeuntil(value, arg);
     },
@@ -280,7 +277,19 @@ var filters = exports.filters = {
             return out;
         }
         return utils.html.urlize(value + "", { limit: arg });
+    },
+    wordcount: function (value, arg) {
+        return (value + "").split(/\s+/g).length;
+    },
+    wordwrap: function (value, arg) {
+        return utils.wordwrap(value + "", arg - 0);
+    },
+    yesno: function (value, arg) {
+        var responses = (arg + "").split(/,/g);
+        if (responses[2] && (value === undefined || value === null)) { return responses[2]; }
+        return (value ? responses[0] : responses[1]) || '';
     }
+
 };
 
 
@@ -353,6 +362,33 @@ var nodes = exports.nodes = {
         };
     },
 
+    IfChangedNode: function (node_list) {
+        var last;
+
+        return function (context) {
+            var current = node_list.evaluate(context);
+            if (current !== last) {
+                last = current;
+                return current;
+            } else {
+                return '';
+            }
+        };
+    },
+
+    IfEqualNode: function (node_list, first, second) {
+        return function (context) {
+            return context.get(first) == context.get(second) ? node_list.evaluate(context) : '';
+        };
+    },
+
+    IfNotEqualNode: function (node_list, first, second) {
+        return function (context) {
+            return context.get(first) != context.get(second) ? node_list.evaluate(context) : '';
+        };
+    },
+
+
     CycleNode: function (items) {
 
         var cnt = 0;
@@ -373,7 +409,7 @@ var nodes = exports.nodes = {
         };
     },
 
-    BlockNode: function (name, node_list) {
+    BlockNode: function (node_list, name) {
 
         return function (context) {
 
@@ -410,7 +446,14 @@ var nodes = exports.nodes = {
         };
     },
 
-    AutoescapeNode: function (enable, node_list) {
+    AutoescapeNode: function (node_list, enable) {
+
+        if (enable.toLowerCase() === 'on') {
+            enable = true;
+        } else {
+            enable = false;
+        }
+
         return function (context) {
             var before = context.autoescaping;
             context.autoescaping = enable;
@@ -420,18 +463,21 @@ var nodes = exports.nodes = {
         }
     },
 
-    FirstOfNode: function (choices) {
+    FirstOfNode: function (/*...*/) {
+    
+        var choices = Array.prototype.slice.apply(arguments);
+
         return function (context) {
             var i, val;
             for (i = 0; i < choices.length; i++) {
-                var val = context.get(choices[i]);
+                val = context.get(choices[i]);
                 if (val) { return val; }
             }
             return '';
-        }
+        };
     },
 
-    WithNode: function (variable, name, node_list) {
+    WithNode: function (node_list, variable, name) {
         return function (context) {
             var item = context.get(variable);
             context.push();
@@ -440,11 +486,80 @@ var nodes = exports.nodes = {
             context.pop();
             return out;
         }
+    },
+
+    NowNode: function (format) {
+        if (format.match(/^["']/)) {
+            format = format.slice(1, -1);
+        }
+        return function (context) {
+            return utils.date.format_date(new Date(), format);
+        };
     }
 
 };
 
-var callbacks = exports.callbacks = {
+
+function assert_args_in_token(token, options) {
+    options = options || {};
+
+    var parts = token.split_contents();
+
+    if (options.argcount !== undefined && parts.length !== options.argcount + 1) {
+        throw 'unexpected syntax in "' + token.type + '" tag: Wrong number of arguments';
+    }
+
+    var i;
+    for (i = 1; i < parts.length; i++) {
+        if (options[i + 'mustbe']) {
+            var expected = options[i + 'mustbe'];
+            if (expected instanceof Array) {
+                if (expected.indexOf(parts[i]) === -1) {
+                    throw 'unexpected syntax in "' + token.type + '" tag: Expected one of "' + expected.join('", "') + '"';
+                }
+            } else if (expected != parts[i]) {
+                throw 'unexpected syntax in "' + token.type + '" tag: Expected "' + options[i + 'mustbe'] + '"';
+            }
+        }
+    }
+
+    if (options.exclude) {
+        if (!(options.exclude instanceof Array)) { options.exclude = [options.exclude] }
+        var include = [];
+        for (i = 1; i < parts.length; i++) {
+            if (options.exclude.indexOf(i) === -1) { include.push(i); }
+        }
+        parts = include.map(function (x) { return parts[x]; });
+    } else {
+        parts = parts.slice(1);
+    }
+
+    return parts;
+}
+
+
+function simple_tag(node, options) {
+
+    return function (parser, token) {
+        var parts = assert_args_in_token(token, options);
+        return node.apply(null, parts);
+    };
+
+}
+
+function inclusion_tag(node, options) {
+    return function (parser, token) {
+
+        var parts = assert_args_in_token(token, options);
+
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+
+        return node.apply(null, [node_list].concat(parts));
+    };
+}
+
+var tags = exports.tags = {
     'text': function (parser, token) { return nodes.TextNode(token.contents); },
 
     'variable': function (parser, token) {
@@ -452,7 +567,7 @@ var callbacks = exports.callbacks = {
     },
 
     'comment': function (parser, token) {
-        parser.parse('endcomment');
+        parser.parse('end' + token.type);
         parser.delete_first_token();
         return nodes.TextNode('');
     },
@@ -461,7 +576,7 @@ var callbacks = exports.callbacks = {
         
         var parts = token.split_contents();
 
-        if (parts[0] !== 'for' || parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
+        if (parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
             throw 'unexpected syntax in "for" tag: ' + token.contents;
         }
         
@@ -478,8 +593,6 @@ var callbacks = exports.callbacks = {
     'if': function (parser, token) {
 
         var parts = token.split_contents();
-
-        if (parts[0] !== 'if') { throw 'unexpected syntax in "if" tag'; }
 
         // get rid of if keyword
         parts.shift();
@@ -519,10 +632,17 @@ var callbacks = exports.callbacks = {
         return nodes.IfNode(item_names, not_item_names, operator, node_list, else_list);
     },
 
+    // TODO: else
+    'ifchanged': inclusion_tag(nodes.IfChangedNode, { argcount: 0 }),
+
+    // TODO: else
+    'ifequal': inclusion_tag(nodes.IfEqualNode, { argcount: 2 }),
+
+    // TODO: else
+    'ifnotequal': inclusion_tag(nodes.IfNotEqualNode, { argcount: 2 }),
+
     'cycle': function (parser, token) {
         var parts = token.split_contents();
-
-        if (parts[0] !== 'cycle') { throw 'unexpected syntax in "cycle" tag'; }
 
         var items = parts.slice(1);
         var as_idx = items.indexOf('as');
@@ -554,7 +674,7 @@ var callbacks = exports.callbacks = {
 
     'filter': function (parser, token) {
         var parts = token.split_contents();
-        if (parts[0] !== 'filter' || parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
+        if (parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
 
         var expr = parser.make_filterexpression('|' + parts[1]);
 
@@ -563,62 +683,17 @@ var callbacks = exports.callbacks = {
 
         return nodes.FilterNode(expr, node_list);
     },
-    
-    'block': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'block' || parts.length !== 2) { throw 'unexpected syntax in "block" tag'; }
-        var name = parts[1];
 
-        var node_list = parser.parse('endblock');
-        parser.delete_first_token();
+    'autoescape': inclusion_tag(nodes.AutoescapeNode, { argcount: 1, '1mustbe': ['on', 'off'] }),
 
-        return nodes.BlockNode(name, node_list);
-    },
+    'block': inclusion_tag(nodes.BlockNode, { argcount: 1 }),
 
-    'extends': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'extends' || parts.length !== 2) { throw 'unexpected syntax in "extends" tag'; }
-        var name = parts[1];
+    'extends': simple_tag(nodes.ExtendsNode, { argcount: 1 }),
 
-        return nodes.ExtendsNode(name);
-    },
+    'firstof': simple_tag(nodes.FirstOfNode),
 
-    'autoescape': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'autoescape' || parts.length !== 2) { throw 'unexpected syntax in "autoescape" tag'; }
-        var enable;
-        if (parts[1] === 'on') {
-            enable = true;
-        } else if (parts[1] === 'off' ) {
-            enable = false;
-        } else {
-            throw 'unexpected syntax in "autoescape" tag. Expected on or off';
-        }
+    'with': inclusion_tag(nodes.WithNode, { argcount: 3, exclude: 2, '2mustbe': 'as' }),
 
-        var node_list = parser.parse('endautoescape');
-        parser.delete_first_token();
-
-        return nodes.AutoescapeNode(enable, node_list);
-    },
-
-    'firstof': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'firstof') { throw 'unexpected syntax in "firstof" tag'; }
-        return nodes.FirstOfNode( parts.slice(1) );
-    },
-
-    'with': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'with' || parts[2] !== 'as' || parts.length !== 4) {
-            throw 'unexpected syntax in "with" tag';
-        }
-        var node_list = parser.parse('endwith');
-        parser.delete_first_token();
-
-        return nodes.WithNode(parts[1], parts[3], node_list);
-    }
-
+    'now': simple_tag(nodes.NowNode, { argcount: 1 })
 };
-
-
 
