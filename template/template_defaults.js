@@ -296,18 +296,18 @@ var filters = exports.filters = {
 var nodes = exports.nodes = {
 
     TextNode: function (text) {
-        return function () { return text; };
+        return function (context, callback) { callback(false, text); };
     },
 
     VariableNode: function (filterexpression) {
-        return function (context) {
-            return filterexpression.resolve(context);
+        return function (context, callback) {
+            callback(false, filterexpression.resolve(context));
         };
     },
 
     ForNode: function (itemname, listname, node_list, isReversed) {
 
-        return function (context) {
+        return function (context, callback) {
             var forloop = { parentloop: context.get('forloop') },
                 list = context.get(listname),
                 out = '';
@@ -318,29 +318,30 @@ var nodes = exports.nodes = {
             context.push();
             context.set('forloop', forloop);
 
-            list.forEach( function (o, idx, iter) {
+            function inner(p, c, idx, list, next) {
                 process.mixin(forloop, {
                     counter: idx + 1,
                     counter0: idx,
-                    revcounter: iter.length - idx,
-                    revcounter0: iter.length - (idx + 1),
+                    revcounter: list.length - idx,
+                    revcounter0: list.length - (idx + 1),
                     first: idx === 0,
-                    last: idx === iter.length - 1
+                    last: idx === list.length - 1
                 });
-                context.set(itemname, o);
+                context.set(itemname, c);
 
-                out += node_list.evaluate( context );
+                node_list.evaluate( context, function (error, result) { next(error, p + result); });
+            }
+
+            utils.iter.reduce(list, inner, '', function (error, result) {
+                context.pop();
+                callback(error, result);
             });
-
-            context.pop();
-
-            return out;
         };
     },
 
     IfNode: function (item_names, not_item_names, operator, if_node_list, else_node_list) {
 
-        return function (context) {
+        return function (context, callback) {
 
             function not(x) { return !x; }
             function and(p,c) { return p && c; }
@@ -353,11 +354,11 @@ var nodes = exports.nodes = {
             var isTrue = items.reduce( operator === 'or' ? or : and, true );
 
             if (isTrue) {
-                return if_node_list.evaluate( context );
+                if_node_list.evaluate(context, function (error, result) { callback(error, result); });
             } else if (else_node_list.length) {
-                return else_node_list.evaluate( context );
+                else_node_list.evaluate(context, function (error, result) { callback(error, result); });
             } else {
-                return '';
+                callback(false, '');
             }
         };
     },
@@ -365,26 +366,35 @@ var nodes = exports.nodes = {
     IfChangedNode: function (node_list) {
         var last;
 
-        return function (context) {
-            var current = node_list.evaluate(context);
-            if (current !== last) {
-                last = current;
-                return current;
-            } else {
-                return '';
-            }
+        return function (context, callback) {
+            node_list.evaluate(context, function (error, result) {
+                if (result !== last) {
+                    last = result;
+                    callback(error, result);
+                } else {
+                    callback(error, '');
+                }
+            });
         };
     },
 
     IfEqualNode: function (node_list, first, second) {
-        return function (context) {
-            return context.get(first) == context.get(second) ? node_list.evaluate(context) : '';
+        return function (context, callback) {
+            if (context.get(first) == context.get(second)) {
+                node_list.evaluate(context, callback);
+            } else {
+                callback(false, '');
+            }
         };
     },
 
     IfNotEqualNode: function (node_list, first, second) {
-        return function (context) {
-            return context.get(first) != context.get(second) ? node_list.evaluate(context) : '';
+        return function (context, callback) {
+            if (context.get(first) != context.get(second)) {
+                node_list.evaluate(context, callback);
+            } else {
+                callback(false, '');
+            }
         };
     },
 
@@ -393,27 +403,34 @@ var nodes = exports.nodes = {
 
         var cnt = 0;
 
-        return function (context) {
+        return function (context, callback) {
 
             var choices = items.map( context.get, context );
             var val = choices[cnt];
             cnt = (cnt + 1) % choices.length;
-            return val;
+            callback(false, val);
         };
     },
 
     FilterNode: function (expression, node_list) {
-        return function (context) {
-            expression.constant = node_list.evaluate( context );
-            return expression.resolve(context);
+        return function (context, callback) {
+            node_list.evaluate( context, function (error, constant) {
+                expression.constant = constant;
+                callback(error, expression.resolve(context));
+            });
         };
     },
 
     BlockNode: function (node_list, name) {
 
-        return function (context) {
-
-            var out = '';
+        /* upon execution each block stores it's nodelist in the context
+         * indexed by the blocks name. As templates are executed from child to
+         * parent, similar named blocks add their nodelist to an array of
+         * nodelists (still indexed by the blocks name). When the root template
+         * is reached, the blocks nodelists are executed one after each other
+         * and the super variable is updated down through the hierachy.
+        */
+        return function (context, callback) {
 
             // init block list if it isn't already
             if (!context.blocks[name]) {
@@ -425,24 +442,31 @@ var nodes = exports.nodes = {
 
             // if this is a root template descend through templates and evaluate blocks for overrides
             if (!context.extends) {
+
                 context.push();
 
-                context.blocks[name].forEach( function (list) {
-                    out = list.evaluate( context );
-                    context.set('block', { super: out });
+                function inner(p, c, idx, block_list, next) {
+                    c.evaluate( context, function (error, result) {
+                        context.set('block', { super: result });
+                        next(error, result);
+                    });
+                }
+                utils.iter.reduce( context.blocks[name], inner, '', function (error, result) {
+                    context.pop();
+                    callback(error, result);
                 });
 
-                context.pop();
+            } else {
+                // else return empty string
+                callback(false, '');
             }
-
-            return out;
         };
     },
 
     ExtendsNode: function (item) {
-        return function (context) {
+        return function (context, callback) {
             context.extends = context.get(item);
-            return '';
+            callback(false, '');
         };
     },
 
@@ -454,12 +478,13 @@ var nodes = exports.nodes = {
             enable = false;
         }
 
-        return function (context) {
+        return function (context, callback) {
             var before = context.autoescaping;
             context.autoescaping = enable;
-            out = node_list.evaluate( context );
-            context.autoescaping = before;
-            return out;
+            node_list.evaluate( context, function ( error, result ) {
+                context.autoescaping = before;
+                callback(error, result);
+            });
         }
     },
 
@@ -467,24 +492,25 @@ var nodes = exports.nodes = {
     
         var choices = Array.prototype.slice.apply(arguments);
 
-        return function (context) {
-            var i, val;
+        return function (context, callback) {
+            var i, val, found;
             for (i = 0; i < choices.length; i++) {
                 val = context.get(choices[i]);
-                if (val) { return val; }
+                if (val) { found = true; break; }
             }
-            return '';
+            callback(false, found ? val : '')
         };
     },
 
     WithNode: function (node_list, variable, name) {
-        return function (context) {
+        return function (context, callback) {
             var item = context.get(variable);
             context.push();
             context.set(name, item);
-            var out = node_list.evaluate( context );
-            context.pop();
-            return out;
+            node_list.evaluate( context, function (error, result) {
+                context.pop();
+                callback(error, result);
+            });
         }
     },
 
@@ -492,8 +518,8 @@ var nodes = exports.nodes = {
         if (format.match(/^["']/)) {
             format = format.slice(1, -1);
         }
-        return function (context) {
-            return utils.date.format_date(new Date(), format);
+        return function (context, callback) {
+            callback(false, utils.date.format_date(new Date(), format));
         };
     }
 

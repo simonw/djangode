@@ -45,7 +45,7 @@ var isEqual = function (expected, actual) {
 };
 
 var testcases = [];
-
+var async_test_has_failed = false;
 
 exports.dsl = {
 
@@ -103,8 +103,12 @@ exports.dsl = {
 
                         var context = testcase.setup ? testcase.setup() : {};
 
+                        async_test_has_failed = false;
+
                         function handle_result(error) {
                             if (error) {
+                                async_test_has_failed = true;
+
                                 if (error instanceof AssertFailedException) {
                                     sys.puts(' [--] ' + test.name + ': failed. ' + error.message);
                                     failed_cnt++;
@@ -153,6 +157,7 @@ exports.dsl = {
     },
 
     assertEquals: function (actual, expected, callback) {
+        if (async_test_has_failed) { return; }
         if (!isEqual(actual, expected)) {
             var exception = new AssertFailedException(
                 '\nExpected: ' + sys.inspect(actual) + '\nActual: ' + sys.inspect(expected) + '\n'
@@ -162,6 +167,7 @@ exports.dsl = {
     },
 
     shouldThrow: function (func, args, this_context, callback) {
+        if (async_test_has_failed) { return; }
         try {
             func.apply(this_context, args);
         } catch (e) {
@@ -175,6 +181,7 @@ exports.dsl = {
     },
 
     shouldNotThrow: function (func, args, this_context, callback) {
+        if (async_test_has_failed) { return; }
         try {
             func.apply(this_context, args);
         } catch (e) {
@@ -184,8 +191,13 @@ exports.dsl = {
     },
     
     fail: function (message, callback) {
+        if (async_test_has_failed) { return; }
         var exception = new AssertFailedException(message);
         if (callback) { callback(exception); } else { throw exception; }
+    },
+
+    end_async_test: function (callback) {
+        if (!async_test_has_failed) { callback(); }
     }
 };
 
@@ -246,7 +258,7 @@ with (exports.dsl) {
                 assertEquals('hest', 'hest', callback);
                 assertEquals(2, 2, callback);
                 shouldThrow(assertEquals, [2,4], null, callback)
-                callback();
+                end_async_test( callback );
             });
         });
 

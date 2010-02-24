@@ -25,14 +25,23 @@ var app = dj.makeApp([
     ['^/(template-demo/.*)$', dj.serveFile],
 
     ['^/template$', function (req, res) {
-        template_system.load('template.html', function(t) {
-            dj.respond(res, t.render(test_context));
-        });
+        dj.serveFile(req, res, 'template-demo/template.html');
     }],
 
     ['^/text$', function (req, res) {
-        var html = template_system.load('template.html').render(test_context);
-        dj.respond(res, html, 'text/plain');
+        template_system.load('template.html', function (error, template) {
+            template.render(test_context, function (error, html) {
+                dj.respond(res, html, 'text/plain');
+            });
+        })
+    }],
+
+    ['^/html$', function (req, res) {
+        template_system.load('template.html', function (error, template) {
+            template.render(test_context, function (error, html) {
+                dj.respond(res, html, 'text/html');
+            });
+        })
     }]
 ]);
 

@@ -8,27 +8,18 @@ var cache = {};
 var template_path = '/tmp';
 
 function load(name, parse_function, callback) {
+    if (!callback) { throw 'loader.load() must be called with a callback'; }
+
     if (cache[name] != undefined) {
-        if (callback) {
-            callback(cache[name]);
-        } else {
-            return cache[name];
-        }
+        callback(false, cache[name]);
     } else {
-        if (callback) {
-            fs.readfile(template_path + '/' + name, function (error, s) {
-                if (error) { callback(error); }
-                cache[name] = parse_function(s);
-                callback(false, cache[name]);
-            });
-        } else {
-            var content = fs.readFileSync(template_path + '/' + name);
-            cache[name] = parse_function(content);
-            return cache[name];
-        }
+        fs.readFile(template_path + '/' + name, function (error, s) {
+            if (error) { callback(error); }
+            cache[name] = parse_function(s);
+            callback(false, cache[name]);
+        });
     }
 }
-
 
 function flush() {
     cache = {};

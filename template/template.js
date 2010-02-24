@@ -7,7 +7,7 @@ var template_defaults = require('template/template_defaults');
 var template_loader = require('template/loader');
 
 exports.loader = template_loader;
-exports.load = function (name, callback) { return template_loader.load(name, exports.parse, callback); };
+exports.load = function (name, callback) { template_loader.load(name, exports.parse, callback); };
 
 function normalize(value) {
     if (typeof value !== 'string') { return value; }
@@ -222,8 +222,10 @@ function parser_error(e) {
 
 function make_nodelist() {
     var node_list = [];
-    node_list.evaluate = function (context) {
-        return this.reduce( function (p, c) { return p + c(context); }, '');
+    node_list.evaluate = function (context, callback) {
+        utils.iter.reduce(this, function (p, c, idx, list, next) {
+            c(context, function (error, result) { next(error, p + result); });
+        }, '', callback);
     };
     node_list.only_types = function (/*args*/) {
         var args = Array.prototype.slice.apply(arguments);
@@ -245,7 +247,7 @@ process.mixin(Parser.prototype, {
         var stoppers = Array.prototype.slice.apply(arguments);
         var node_list = make_nodelist();
         var token = this.token_list[0];
-        var callback = null;
+        var tag = null;
 
         //sys.debug('' + this.indent++ + ':starting parsing with stoppers ' + stoppers.join(', '));
 
@@ -259,9 +261,9 @@ process.mixin(Parser.prototype, {
 
             //sys.debug('' + this.indent + ': ' + token);
 
-            callback = this.tags[token.type];
-            if (callback && typeof callback === 'function') {
-                node_list.append( callback(this, token), token.type );
+            tag = this.tags[token.type];
+            if (tag && typeof tag === 'function') {
+                node_list.append( tag(this, token), token.type );
             } else {
                 //throw parser_error('Unknown tag: ' + token[0]);
                 node_list.append(
@@ -357,19 +359,24 @@ function Template(input) {
 }
 
 process.mixin(Template.prototype, {
-    render: function (o) {
+    render: function (o, callback) {
+
+        if (!callback) { throw 'template.render() must be called with a callback'; }
 
         var context = (o instanceof Context) ? o : new Context(o || {});
         context.extends = '';
 
-        var rendered = this.node_list.evaluate(context);
+        this.node_list.evaluate(context, function (error, rendered) {
+            if (error) { callback(error); }
 
-        if (context.extends) {
-            var parent_template = exports.load(context.extends);
-            rendered = parent_template.render(context);
-        }
-
-        return rendered;
+            if (context.extends) {
+                exports.load(context.extends, function (error, parent_template) {
+                    parent_template.render(context, callback);
+                });
+            } else {
+                callback(false, rendered);
+            }
+        });
     }
 });
 
@@ -386,6 +393,7 @@ exports.parse = function (input) {
 exports.Context = Context;
 exports.FilterExpression = FilterExpression;
 exports.tokenize = tokenize;
+exports.make_nodelist = make_nodelist;
 
 
 
