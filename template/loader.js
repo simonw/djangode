@@ -3,11 +3,22 @@
 
 var sys = require('sys');
 var fs = require('fs');
+var template_system = require('./template');
 
 var cache = {};
 var template_path = '/tmp';
 
-function load(name, parse_function, callback) {
+
+// TODO: get_template
+    // should support subdirectories
+
+/*
+    template_loader.load_and_render('template.html', test_context, function(rendered) {
+        dj.respond(res, rendered);
+    });
+*/
+
+var load = exports.load = function (name, callback) {
     if (!callback) { throw 'loader.load() must be called with a callback'; }
 
     if (cache[name] != undefined) {
@@ -15,21 +26,27 @@ function load(name, parse_function, callback) {
     } else {
         fs.readFile(template_path + '/' + name, function (error, s) {
             if (error) { callback(error); }
-            cache[name] = parse_function(s);
+            cache[name] = template_system.parse(s);
             callback(false, cache[name]);
         });
     }
-}
+};
 
-function flush() {
+exports.load_and_render = function (name, context, callback) {
+    load(name, function (error, template) {
+        if (error) {
+            callback(error);
+        } else {
+            template.render(context, callback);
+        }
+    });
+};
+
+exports.flush = function () {
     cache = {};
-}
+};
 
-function set_path(path) {
+exports.set_path = function (path) {
     template_path = path;
-}
-
-exports.load = load;
-exports.set_path = set_path;
-exports.flush = flush;
+};
 

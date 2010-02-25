@@ -1,5 +1,5 @@
-process.mixin(GLOBAL, require('utils/test').dsl);
-process.mixin(GLOBAL, require('utils/date'));
+process.mixin(GLOBAL, require('./test').dsl);
+process.mixin(GLOBAL, require('./date'));
 var sys = require('sys');
 
 

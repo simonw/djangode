@@ -1,8 +1,9 @@
 var sys = require('sys');
 var fs = require('fs');
-var template = require('template/template');
-process.mixin(GLOBAL, require('utils/test').dsl);
-process.mixin(GLOBAL, require('template/template_defaults'));
+var template = require('./template');
+
+process.mixin(GLOBAL, require('../utils/test').dsl);
+process.mixin(GLOBAL, require('./template_defaults'));
 
 function write_file(path, content) {
     var file = fs.openSync(path, process.O_WRONLY | process.O_TRUNC | process.O_CREAT, 0666);
@@ -29,8 +30,10 @@ function make_parse_and_execute_test(expected, tpl, name) {
 }
 
 testcase('fornode')
-    setup( function () { return { obj: { items: [ 1,2,3,4 ] } }; });
+    setup( function () { return { obj: { items: [ 1,2,3,4 ], noitems: [] } }; });
     make_parse_and_execute_test(' 1  2  3  4 ', '{% for item in items %} {{ item }} {% endfor %}');
+    make_parse_and_execute_test('hest',
+        '{% for item in notitems %} {{ item }} {% empty %}hest{% endfor %}');
 
 testcase('variable')
     setup( function () {
@@ -56,6 +59,7 @@ testcase('variable')
     make_parse_and_execute_test('1', '{{ obj.a }}');
     make_parse_and_execute_test('2', '{{ obj.b }}');
     make_parse_and_execute_test('laks', '{{ obj.c.e.f }}');
+    make_parse_and_execute_test('', '{{ nonexisting }}');
     make_parse_and_execute_test('&qout;hest&qout;', '{{ qstr }}');
     make_parse_and_execute_test('HEST', '{{ "hest"|upper }}');
     make_parse_and_execute_test('16', '{{ 10|add:"6" }}');
@@ -111,8 +115,9 @@ testcase('block and extend')
             + '{% block test2 %} Et cirkus{{ block.super }}{% endblock %}'
         );
 
-        template.loader.flush();
-        template.loader.set_path('/tmp');
+        var template_loader = require('./loader');
+        template_loader.flush();
+        template_loader.set_path('/tmp');
 
         return { obj: { parent: 'block_test_2.html' } };
     })
@@ -184,6 +189,9 @@ testcase('ifchanged')
     make_parse_and_execute_test('hestgirafhestgiraf',
         '{% for item in list %}{% ifchanged %}{{ item }}{% endifchanged %}{%endfor%}'
     );
+    make_parse_and_execute_test('hestgiraf::hestgiraf',
+        '{% for item in list %}{% ifchanged %}{{ item }}{% else %}::{% endifchanged %}{%endfor%}'
+    );
 
 testcase('ifequal')
     setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; }); 
@@ -192,6 +200,7 @@ testcase('ifequal')
     make_parse_and_execute_test('giraf', '{% ifequal item "hest" %}giraf{%endifequal %}');
     make_parse_and_execute_test('giraf', '{% ifequal item other %}giraf{%endifequal %}');
     make_parse_and_execute_test('',      '{% ifequal item fish %}giraf{%endifequal %}');
+    make_parse_and_execute_test('tapir', '{% ifequal item fish %}giraf{% else %}tapir{%endifequal %}');
 
 testcase('ifnotequal')
     setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; }); 
@@ -200,6 +209,7 @@ testcase('ifnotequal')
     make_parse_and_execute_test('laks', '{% ifnotequal item "giraf" %}laks{%endifnotequal %}');
     make_parse_and_execute_test('laks', '{% ifnotequal item fish %}laks{%endifnotequal %}');
     make_parse_and_execute_test('',     '{% ifnotequal item other %}laks{%endifnotequal %}');
+    make_parse_and_execute_test('hest', '{% ifnotequal item other %}laks{% else %}hest{% endifnotequal %}');
 
 testcase('now')
     test_async('should work as expected', function (testcontext, complete) {
@@ -218,5 +228,52 @@ testcase('now')
         });
     });
 
-run(true);
+testcase('include')
+    setup(function () {
+        write_file('/tmp/include_test.html', 'her er en hest{{ item }}.');
+
+        var template_loader = require('./loader');
+        template_loader.flush();
+        template_loader.set_path('/tmp');
+
+        return { obj: { name: 'include_test.html', item: 'giraf' } };
+    })
+
+    make_parse_and_execute_test('her er en hestgiraf.', '{% include "include_test.html" %}');
+    make_parse_and_execute_test('her er en hestgiraf.', '{% include name %}');
+
+testcase('load')
+
+    exports.filters = { testfilter: function () { return 'hestgiraf'; } }
+    exports.tags = {
+        testtag: function () {
+            return function (context, callback) {
+                callback('', 'hestgiraf')
+            };
+        }
+    };
+
+    make_parse_and_execute_test('hestgiraf', '{% load ./template_defaults.tags.test %}{{ 100|testfilter }}');
+    make_parse_and_execute_test('hestgiraf', '{% load "./template_defaults.tags.test" %}{{ 100|testfilter }}');
+    make_parse_and_execute_test('hestgiraf', '{% load ./template_defaults.tags.test %}{% testtag %}');
+
+testcase('templatetag')
+    make_parse_and_execute_test('{%', '{% templatetag openblock %}');
+    make_parse_and_execute_test('%}', '{% templatetag closeblock %}');
+    make_parse_and_execute_test('{{', '{% templatetag openvariable %}');
+    make_parse_and_execute_test('}}', '{% templatetag closevariable %}');
+    make_parse_and_execute_test('{', '{% templatetag openbrace %}');
+    make_parse_and_execute_test('}', '{% templatetag closebrace %}');
+    make_parse_and_execute_test('{#', '{% templatetag opencomment %}');
+    make_parse_and_execute_test('#}', '{% templatetag closecomment %}');
+
+testcase('spaceless')
+    make_parse_and_execute_test('<p><a href="foo/">Foo</a></p>',
+        '{% spaceless %}<p>\n        <a href="foo/">Foo</a>\n    </p>{% endspaceless %}');
+
+testcase('widthratio')
+    setup(function () { return {obj:{this_value: 175, max_value: 200 } }; }); 
+    make_parse_and_execute_test('88', '{% widthratio this_value max_value 100 %}');
+
+run();
 

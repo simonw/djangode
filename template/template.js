@@ -2,12 +2,9 @@
 /*global require, process, exports */
 
 var sys = require('sys');
-var utils = require('utils/utils');
-var template_defaults = require('template/template_defaults');
-var template_loader = require('template/loader');
-
-exports.loader = template_loader;
-exports.load = function (name, callback) { template_loader.load(name, exports.parse, callback); };
+var string_utils = require('../utils/string');
+var html = require('../utils/html');
+var iter = require('../utils/iter');
 
 function normalize(value) {
     if (typeof value !== 'string') { return value; }
@@ -31,7 +28,7 @@ function Token(type, contents) {
 
 process.mixin(Token.prototype, {
     split_contents: function () {
-        return utils.string.smart_split(this.contents);
+        return string_utils.smart_split(this.contents);
     }
 });
 
@@ -179,7 +176,7 @@ process.mixin(FilterExpression.prototype, {
 
         var out = this.filter_list.reduce( function (p,c) {
 
-            var filter = template_defaults.filters[c.name];
+            var filter = context.filters[c.name];
 
             var arg;
             if (c.arg) {
@@ -199,9 +196,9 @@ process.mixin(FilterExpression.prototype, {
 
         if (safety.must_escape && !safety.is_safe) {
             if (typeof out === 'string') {
-                return utils.html.escape(out);
+                return html.escape(out);
             } else if (out instanceof Array) {
-                return out.map( function (o) { return typeof o === 'string' ? utils.html.escape(o) : o; } );
+                return out.map( function (o) { return typeof o === 'string' ? html.escape(o) : o; } );
             }
         }
         return out;
@@ -214,6 +211,10 @@ function Parser(input) {
     this.token_list = tokenize(input);
     this.indent = 0;
     this.blocks = {};
+
+    var defaults = require('./template_defaults');
+    this.tags = defaults.tags;
+    this.nodes = defaults.nodes;
 }
 
 function parser_error(e) {
@@ -223,7 +224,7 @@ function parser_error(e) {
 function make_nodelist() {
     var node_list = [];
     node_list.evaluate = function (context, callback) {
-        utils.iter.reduce(this, function (p, c, idx, list, next) {
+        iter.reduce(this, function (p, c, idx, list, next) {
             c(context, function (error, result) { next(error, p + result); });
         }, '', callback);
     };
@@ -239,8 +240,6 @@ function make_nodelist() {
 }
 
 process.mixin(Parser.prototype, {
-
-    tags: template_defaults.tags,
 
     parse: function () {
     
@@ -267,7 +266,7 @@ process.mixin(Parser.prototype, {
             } else {
                 //throw parser_error('Unknown tag: ' + token[0]);
                 node_list.append(
-                    template_defaults.nodes.TextNode('[[ UNKNOWN ' + token.type + ' ]]'),
+                    this.nodes.TextNode('[[ UNKNOWN ' + token.type + ' ]]'),
                     'UNKNOWN'
                 );
             }
@@ -302,6 +301,7 @@ function Context(o) {
     this.extends = '';
     this.blocks = {};
     this.autoescaping = true;
+    this.filters = require('./template_defaults').filters;
 }
 
 process.mixin(Context.prototype, {
@@ -347,7 +347,7 @@ process.mixin(Context.prototype, {
     },
     pop: function () {
         return this.scope.shift();
-    }
+    },
 });
 
 
@@ -370,9 +370,8 @@ process.mixin(Template.prototype, {
             if (error) { callback(error); }
 
             if (context.extends) {
-                exports.load(context.extends, function (error, parent_template) {
-                    parent_template.render(context, callback);
-                });
+                var template_loader = require('./loader');
+                template_loader.load_and_render(context.extends, context, callback);
             } else {
                 callback(false, rendered);
             }
@@ -383,8 +382,6 @@ process.mixin(Template.prototype, {
 /********************************************************/
 
 exports.parse = function (input) {
-    //var parser = new Parser(input);
-    // TODO: Better error handling, this is lame
     return new Template(input);
 };
 

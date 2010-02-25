@@ -2,7 +2,12 @@
 /*global require, process, exports, escape */
 
 var sys = require('sys');
-var utils = require('utils/utils');
+var string_utils = require('../utils/string');
+var date_utils = require('../utils/date');
+var html = require('../utils/html');
+var iter = require('../utils/iter');
+
+process.mixin(GLOBAL, require('../utils/tags'));
 
 /* TODO: Missing filters
 
@@ -16,22 +21,19 @@ NOTE:
     stringformat() filter is regular sprintf compliant and doesn't have real python syntax
 
 Missing tags:
-    for ( missing 'empty' tag )
 
-    include
-    ssi
-    load
-
+    ssi (will require ALLOWED_INCLUDE_ROOTS somehow)
+        
     debug
 
     regroup
-    spaceless
-    templatetag
-    url
     widthratio
+
+    url
 
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
+    load takes a path - like require. Loaded module must expose tags and filters objects.
 */
 
 var filters = exports.filters = {
@@ -40,13 +42,13 @@ var filters = exports.filters = {
         arg = arg - 0;
         return (isNaN(value) || isNaN(arg)) ? '' : (value + arg);
     },
-    addslashes: function (value, arg) { return utils.string.add_slashes("" + value); },
-    capfirst: function (value, arg) { return utils.string.cap_first("" + value); },
-    center: function (value, arg) { return utils.string.center("" + value, arg - 0); },
+    addslashes: function (value, arg) { return string_utils.add_slashes("" + value); },
+    capfirst: function (value, arg) { return string_utils.cap_first("" + value); },
+    center: function (value, arg) { return string_utils.center("" + value, arg - 0); },
     cut: function (value, arg) { return ("" + value).replace(new RegExp(arg, 'g'), ""); },
     date: function (value, arg) {
         // TODO: this filter may be unsafe...
-        return (value instanceof Date) ? utils.date.format_date(value, arg) : '';
+        return (value instanceof Date) ? date_utils.format_date(value, arg) : '';
     },
     'default': function (value, arg) {
         // TODO: this filter may be unsafe...
@@ -105,7 +107,7 @@ var filters = exports.filters = {
     },
     force_escape: function (value, arg, safety) {
         safety.is_safe = true;
-        return utils.html.escape("" + value);
+        return html.escape("" + value);
     },
     get_digit: function (value, arg) {
         if (typeof value !== 'number' || typeof arg !== 'number' || arg < 1) { return value; }
@@ -124,12 +126,12 @@ var filters = exports.filters = {
     length: function (value, arg) { return value.length ? value.length : 0; },
     length_is: function (value, arg) { return value.length === arg; },
     linebreaks: function (value, arg, safety) {
-        var out = utils.html.linebreaks("" + value, { escape: !safety.is_safe && safety.must_escape });
+        var out = html.linebreaks("" + value, { escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
         return out;
     },
     linebreaksbr: function (value, arg, safety) {
-        var out = utils.html.linebreaks("" + value, { onlybr: true, escape: !safety.is_safe && safety.must_escape });
+        var out = html.linebreaks("" + value, { onlybr: true, escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
         return out;
     },
@@ -140,9 +142,9 @@ var filters = exports.filters = {
         var out = lines
             .map(function (s, idx) {
                 if (!safety.is_safe && safety.must_escape) {
-                    s = utils.html.escape("" + s);
+                    s = html.escape("" + s);
                 }
-                return utils.string.sprintf('%0' + len + 'd. %s', idx + 1, s); })
+                return string_utils.sprintf('%0' + len + 'd. %s', idx + 1, s); })
             .join('\n');
         safety.is_safe = true;
         return out;
@@ -150,7 +152,7 @@ var filters = exports.filters = {
     ljust: function (value, arg) {
         arg = arg - 0;
         try {
-            return utils.string.sprintf('%-' + arg + 's', value).substr(0, arg);
+            return string_utils.sprintf('%-' + arg + 's', value).substr(0, arg);
         } catch (e) {
             return '';
         }
@@ -185,7 +187,7 @@ var filters = exports.filters = {
     },
     rjust: function (value, arg) {
         try {
-            return utils.string.sprintf('%' + arg + 's', value).substr(0, arg);
+            return string_utils.sprintf('%' + arg + 's', value).substr(0, arg);
         } catch (e) {
             return '';
         }
@@ -222,39 +224,39 @@ var filters = exports.filters = {
     },
     stringformat: function (value, arg) {
         // TODO: this filter may not be safe
-        try { return utils.string.sprintf('%' + arg, value); } catch (e) { return ''; }
+        try { return string_utils.sprintf('%' + arg, value); } catch (e) { return ''; }
     },
     striptags: function (value, arg, safety) {
         safety.is_safe = true;
         return String(value).replace(/<(.|\n)*?>/g, '');
     },
     title: function (value, arg) {
-        return utils.string.titleCaps( String(value) );
+        return string_utils.titleCaps( String(value) );
     },
     time: function (value, arg) {
         // TODO: this filter may not be safe
-        return (value instanceof Date) ? utils.date.format_time(value, arg) : '';
+        return (value instanceof Date) ? date_utils.format_time(value, arg) : '';
     },
     timesince: function (value, arg) {
         // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
         value = new Date(value);
         arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
-        return utils.date.timesince(value, arg);
+        return date_utils.timesince(value, arg);
     },
     timeuntil: function (value, arg) {
         // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
         value = new Date(value);
         arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
-        return utils.date.timeuntil(value, arg);
+        return date_utils.timeuntil(value, arg);
     },
     truncatewords: function (value, arg) {
         return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
     },
     truncatewords_html: function (value, arg, safety) {
         safety.is_safe = true;
-        return utils.html.truncate_html_words(value, arg - 0);
+        return html.truncate_html_words(value, arg - 0);
     },
     upper: function (value, arg) {
         return (value + '').toUpperCase();
@@ -264,25 +266,25 @@ var filters = exports.filters = {
     },
     urlize: function (value, arg, safety) {
         if (!safety.is_safe && safety.must_escape) {
-            var out = utils.html.urlize(value + "", { escape: true });
+            var out = html.urlize(value + "", { escape: true });
             safety.is_safe = true;
             return out;
         }
-        return utils.html.urlize(value + "");
+        return html.urlize(value + "");
     },
     urlizetrunc: function (value, arg, safety) {
         if (!safety.is_safe && safety.must_escape) {
-            var out = utils.html.urlize(value + "", { escape: true, limit: arg });
+            var out = html.urlize(value + "", { escape: true, limit: arg });
             safety.is_safe = true;
             return out;
         }
-        return utils.html.urlize(value + "", { limit: arg });
+        return html.urlize(value + "", { limit: arg });
     },
     wordcount: function (value, arg) {
         return (value + "").split(/\s+/g).length;
     },
     wordwrap: function (value, arg) {
-        return utils.wordwrap(value + "", arg - 0);
+        return string_utils.wordwrap(value + "", arg - 0);
     },
     yesno: function (value, arg) {
         var responses = (arg + "").split(/,/g);
@@ -305,15 +307,24 @@ var nodes = exports.nodes = {
         };
     },
 
-    ForNode: function (itemname, listname, node_list, isReversed) {
+    ForNode: function (node_list, empty_list, itemname, listname, isReversed) {
 
         return function (context, callback) {
             var forloop = { parentloop: context.get('forloop') },
                 list = context.get(listname),
                 out = '';
 
-            if (! list instanceof Array) { return nodes.TextNode(''); }
+            if (! list instanceof Array) { throw 'list not iterable' }
             if (isReversed) { list = list.slice(0).reverse(); }
+
+            if (list.length === 0) {
+                if (empty_list) {
+                    empty_list.evaluate(context, callback);
+                } else {
+                    callback(false, '');
+                }
+                return;
+            }
 
             context.push();
             context.set('forloop', forloop);
@@ -332,7 +343,7 @@ var nodes = exports.nodes = {
                 node_list.evaluate( context, function (error, result) { next(error, p + result); });
             }
 
-            utils.iter.reduce(list, inner, '', function (error, result) {
+            iter.reduce(list, inner, '', function (error, result) {
                 context.pop();
                 callback(error, result);
             });
@@ -355,7 +366,7 @@ var nodes = exports.nodes = {
 
             if (isTrue) {
                 if_node_list.evaluate(context, function (error, result) { callback(error, result); });
-            } else if (else_node_list.length) {
+            } else if (else_node_list) {
                 else_node_list.evaluate(context, function (error, result) { callback(error, result); });
             } else {
                 callback(false, '');
@@ -363,7 +374,7 @@ var nodes = exports.nodes = {
         };
     },
 
-    IfChangedNode: function (node_list) {
+    IfChangedNode: function (node_list, else_list, parts) {
         var last;
 
         return function (context, callback) {
@@ -371,6 +382,8 @@ var nodes = exports.nodes = {
                 if (result !== last) {
                     last = result;
                     callback(error, result);
+                } else if (!error && else_list) {
+                    else_list.evaluate(context, callback);
                 } else {
                     callback(error, '');
                 }
@@ -378,20 +391,24 @@ var nodes = exports.nodes = {
         };
     },
 
-    IfEqualNode: function (node_list, first, second) {
+    IfEqualNode: function (node_list, else_list, first, second) {
         return function (context, callback) {
             if (context.get(first) == context.get(second)) {
                 node_list.evaluate(context, callback);
+            } else if (else_list) {
+                else_list.evaluate(context, callback);
             } else {
                 callback(false, '');
             }
         };
     },
 
-    IfNotEqualNode: function (node_list, first, second) {
+    IfNotEqualNode: function (node_list, else_list, first, second) {
         return function (context, callback) {
             if (context.get(first) != context.get(second)) {
                 node_list.evaluate(context, callback);
+            } else if (else_list) {
+                else_list.evaluate(context, callback);
             } else {
                 callback(false, '');
             }
@@ -451,7 +468,7 @@ var nodes = exports.nodes = {
                         next(error, result);
                     });
                 }
-                utils.iter.reduce( context.blocks[name], inner, '', function (error, result) {
+                iter.reduce( context.blocks[name], inner, '', function (error, result) {
                     context.pop();
                     callback(error, result);
                 });
@@ -519,71 +536,63 @@ var nodes = exports.nodes = {
             format = format.slice(1, -1);
         }
         return function (context, callback) {
-            callback(false, utils.date.format_date(new Date(), format));
+            callback(false, date_utils.format_date(new Date(), format));
         };
+    },
+
+    IncludeNode: function (name) {
+        return function (context, callback) {
+            var loader = require('./loader');
+            loader.load_and_render(context.get(name), context, callback);
+        }
+    },
+
+    LoadNode: function (path, package) {
+        return function (context, callback) {
+            process.mixin(context.filters, package.filters);
+            callback(false, '');
+        }
+    },
+
+    TemplateTagNode: function (type) {
+        return function (context, callback) {
+            var bits = {
+                openblock: '{%',
+                closeblock: '%}',
+                openvariable: '{{',
+                closevariable: '}}',
+                openbrace: '{',
+                closebrace: '}',
+                opencomment: '{#',
+                closecomment: '#}'
+            };
+            if (!bits[type]) {
+                callback('unknown bit');
+            } else {
+                callback(false, bits[type]);
+            }
+        }
+    },
+
+    SpacelessNode: function (node_list) {
+        return function (context, callback) {
+            node_list.evaluate(context, function (error, result) {
+                callback(error, html.strip_spaces_between_tags(result + ""));
+            });
+        }
+    },
+
+    WithRatioNode: function (current, max, constant) {
+        return function (context, callback) {
+            current_val = context.get(current);
+            max_val = context.get(max);
+            constant_val = context.get(constant);
+
+            callback(false, Math.round(current_val / max_val * constant_val) + "");
+        }
     }
 
 };
-
-
-function assert_args_in_token(token, options) {
-    options = options || {};
-
-    var parts = token.split_contents();
-
-    if (options.argcount !== undefined && parts.length !== options.argcount + 1) {
-        throw 'unexpected syntax in "' + token.type + '" tag: Wrong number of arguments';
-    }
-
-    var i;
-    for (i = 1; i < parts.length; i++) {
-        if (options[i + 'mustbe']) {
-            var expected = options[i + 'mustbe'];
-            if (expected instanceof Array) {
-                if (expected.indexOf(parts[i]) === -1) {
-                    throw 'unexpected syntax in "' + token.type + '" tag: Expected one of "' + expected.join('", "') + '"';
-                }
-            } else if (expected != parts[i]) {
-                throw 'unexpected syntax in "' + token.type + '" tag: Expected "' + options[i + 'mustbe'] + '"';
-            }
-        }
-    }
-
-    if (options.exclude) {
-        if (!(options.exclude instanceof Array)) { options.exclude = [options.exclude] }
-        var include = [];
-        for (i = 1; i < parts.length; i++) {
-            if (options.exclude.indexOf(i) === -1) { include.push(i); }
-        }
-        parts = include.map(function (x) { return parts[x]; });
-    } else {
-        parts = parts.slice(1);
-    }
-
-    return parts;
-}
-
-
-function simple_tag(node, options) {
-
-    return function (parser, token) {
-        var parts = assert_args_in_token(token, options);
-        return node.apply(null, parts);
-    };
-
-}
-
-function inclusion_tag(node, options) {
-    return function (parser, token) {
-
-        var parts = assert_args_in_token(token, options);
-
-        var node_list = parser.parse('end' + token.type);
-        parser.delete_first_token();
-
-        return node.apply(null, [node_list].concat(parts));
-    };
-}
 
 var tags = exports.tags = {
     'text': function (parser, token) { return nodes.TextNode(token.contents); },
@@ -600,20 +609,19 @@ var tags = exports.tags = {
 
     'for': function (parser, token) {
         
-        var parts = token.split_contents();
+        var parts = get_args_from_token(token, { exclude: 2, mustbe: { 2: 'in', 4: 'reversed'} });
 
-        if (parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
-            throw 'unexpected syntax in "for" tag: ' + token.contents;
+        var itemname = parts[0],
+            listname = parts[1],
+            isReversed = (parts[2] === 'reversed');
+
+        var node_list = parser.parse('empty', 'end' + token.type);
+        if (parser.next_token().type === 'empty') {
+            var empty_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
         }
-        
-        var itemname = parts[1],
-            listname = parts[3],
-            isReversed = (parts[4] === 'reversed'),
-            node_list = parser.parse('endfor');
 
-        parser.delete_first_token();
-
-        return nodes.ForNode(itemname, listname, node_list, isReversed);
+        return nodes.ForNode(node_list, empty_list, itemname, listname, isReversed);
     },
     
     'if': function (parser, token) {
@@ -647,25 +655,58 @@ var tags = exports.tags = {
             }
         }
 
-        var node_list, else_list = [];
+        var node_list, else_list;
         
-        node_list = parser.parse('else', 'endif');
+        node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
-            else_list = parser.parse('endif');
+            else_list = parser.parse('end' + token.type);
             parser.delete_first_token();
         }
 
         return nodes.IfNode(item_names, not_item_names, operator, node_list, else_list);
     },
 
-    // TODO: else
-    'ifchanged': inclusion_tag(nodes.IfChangedNode, { argcount: 0 }),
+    'ifchanged': function (parser, token) {
+        var parts = get_args_from_token(token);
 
-    // TODO: else
-    'ifequal': inclusion_tag(nodes.IfEqualNode, { argcount: 2 }),
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
 
-    // TODO: else
-    'ifnotequal': inclusion_tag(nodes.IfNotEqualNode, { argcount: 2 }),
+        return nodes.IfChangedNode(node_list, else_list, parts);
+    },
+
+    'ifequal': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 2 });
+
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
+
+        return nodes.IfEqualNode(node_list, else_list, parts[0], parts[1]);
+    },
+
+    'ifnotequal': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 2 });
+
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
+
+        return nodes.IfNotEqualNode(node_list, else_list, parts[0], parts[1]);
+    },
 
     'cycle': function (parser, token) {
         var parts = token.split_contents();
@@ -710,16 +751,52 @@ var tags = exports.tags = {
         return nodes.FilterNode(expr, node_list);
     },
 
-    'autoescape': inclusion_tag(nodes.AutoescapeNode, { argcount: 1, '1mustbe': ['on', 'off'] }),
-
-    'block': inclusion_tag(nodes.BlockNode, { argcount: 1 }),
+    'autoescape': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 1, mustbe: { 1: ['on', 'off'] }});
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.AutoescapeNode(node_list, parts[0]);
+    },
+    
+    'block': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 1 });
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.BlockNode(node_list, parts[0]);
+    },
 
     'extends': simple_tag(nodes.ExtendsNode, { argcount: 1 }),
 
     'firstof': simple_tag(nodes.FirstOfNode),
 
-    'with': inclusion_tag(nodes.WithNode, { argcount: 3, exclude: 2, '2mustbe': 'as' }),
+    'with': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 3, exclude: 2, mustbe: { 2: 'as' }});
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.WithNode(node_list, parts[0], parts[1], parts[2]);
+    },
+    
+    'now': simple_tag(nodes.NowNode, { argcount: 1 }),
+    'include': simple_tag(nodes.IncludeNode, { argcount: 1 }),
+    'load': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 1 });
+        var name = parts[0];
+        if (name[0] === '"' || name[0] === "'") {
+            name = name.substr(1, name.length - 2);
+        }
 
-    'now': simple_tag(nodes.NowNode, { argcount: 1 })
+        var package = require(name);
+        process.mixin(parser.tags, package.tags);
+
+        return nodes.LoadNode(name, package);
+    },
+    'templatetag': simple_tag(nodes.TemplateTagNode, { argcount: 1 }),
+    'spaceless': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 0 });
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.SpacelessNode(node_list);
+    },
+    'widthratio': simple_tag(nodes.WithRatioNode, { argcount: 3 }),
 };
 
