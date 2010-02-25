@@ -243,19 +243,9 @@ testcase('include')
     make_parse_and_execute_test('her er en hestgiraf.', '{% include name %}');
 
 testcase('load')
-
-    exports.filters = { testfilter: function () { return 'hestgiraf'; } }
-    exports.tags = {
-        testtag: function () {
-            return function (context, callback) {
-                callback('', 'hestgiraf')
-            };
-        }
-    };
-
-    make_parse_and_execute_test('hestgiraf', '{% load ./template_defaults.tags.test %}{{ 100|testfilter }}');
-    make_parse_and_execute_test('hestgiraf', '{% load "./template_defaults.tags.test" %}{{ 100|testfilter }}');
-    make_parse_and_execute_test('hestgiraf', '{% load ./template_defaults.tags.test %}{% testtag %}');
+    make_parse_and_execute_test('hestgiraf', '{% load ./load_tag_test %}{{ 100|testfilter }}');
+    make_parse_and_execute_test('hestgiraf', '{% load "./load_tag_test" %}{{ 100|testfilter }}');
+    make_parse_and_execute_test('hestgiraf', '{% load ./load_tag_test %}{% testtag %}');
 
 testcase('templatetag')
     make_parse_and_execute_test('{%', '{% templatetag openblock %}');
@@ -275,5 +265,51 @@ testcase('widthratio')
     setup(function () { return {obj:{this_value: 175, max_value: 200 } }; }); 
     make_parse_and_execute_test('88', '{% widthratio this_value max_value 100 %}');
 
+testcase('regroup')
+    setup(function () {
+        return {
+            obj: {
+                people: [
+                    {'first_name': 'George', 'last_name': 'Bush', 'gender': 'Male'},
+                    {'first_name': 'Bill', 'last_name': 'Clinton', 'gender': 'Male'},
+                    {'first_name': 'Margaret', 'last_name': 'Thatcher', 'gender': 'Female'},
+                    {'first_name': 'Condoleezza', 'last_name': 'Rice', 'gender': 'Female'},
+                    {'first_name': 'Pat', 'last_name': 'Smith', 'gender': 'Unknown'}
+                ]
+            }
+        };
+    });
+
+    make_parse_and_execute_test('<ul>' +
+        '<li>Male:<ul><li>George Bush</li><li>Bill Clinton</li></ul></li>' +
+        '<li>Female:<ul><li>Margaret Thatcher</li><li>Condoleezza Rice</li></ul></li>' +
+        '<li>Unknown:<ul><li>Pat Smith</li></ul></li></ul>',
+        '{% regroup people by gender as gender_list %}' + 
+        '<ul>{% for gender in gender_list %}<li>{{ gender.grouper }}:' +
+        '<ul>{% for item in gender.list %}<li>{{ item.first_name }} {{ item.last_name }}</li>{% endfor %}' +
+        '</ul></li>{% endfor %}</ul>');
+
+testcase('url')
+    setup(function () {
+        process.djangode_urls = {
+            'news-views-special_case_2003': /^articles\/2003\/$/,
+            'news-views-year_archive': /^articles\/(\d{4})\/$/,
+            'news-views-month_archive': /^articles\/(\d{4})\/(\d{2})\/$/,
+            'news-views-article_detail': /^articles\/(\d{4})\/(\d{2})\/(\d+)\/$/
+        };
+        return { obj: { year: 1981, month: 12, date: 2, url_name: 'news-views-article_detail' } };
+    });
+    teardown( function () {
+        delete process.djangode_urls;
+    });
+    make_parse_and_execute_test("/articles/2003/", "{% url 'news-views-special_case_2003' %}");
+    make_parse_and_execute_test("/articles/1981/", "{% url 'news-views-year_archive' 1981 %}");
+    make_parse_and_execute_test("/articles/1981/12/", "{% url 'news-views-month_archive' 1981 , 12 %}");
+    make_parse_and_execute_test("/articles/1981/12/2/", "{% url url_name year, month, date %}");
+
+    make_parse_and_execute_test("/articles/2003/",
+        "{% url 'news-views-special_case_2003' as the_url %}{{ the_url }}");
+    make_parse_and_execute_test("/articles/1981/12/",
+        "{% url 'news-views-month_archive' 1981, 12 as the_url %}{{ the_url }}");
 run();
 

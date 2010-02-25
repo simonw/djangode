@@ -1,4 +1,5 @@
 var sys = require('sys');
+
 process.mixin(GLOBAL, require('./test').dsl);
 process.mixin(GLOBAL, require('./string'));
 
@@ -29,5 +30,19 @@ testcase('wrap')
     test('should wrap text', function () {
         assertEquals('Joel \nis a \nslug', wordwrap('Joel is a slug', 5));
     });
+testcase('regex_to_string')
+    test('should work without groups', function () {
+        assertEquals('hest', regex_to_string(/hest/));
+        assertEquals('hest', regex_to_string(/^hest$/));
+        assertEquals('hestgiraf', regex_to_string(/hest\s*giraf\d+/));
+        assertEquals('hest*', regex_to_string(/hest\*/));
+        assertEquals('hestgiraf', regex_to_string(/hest(tobis)giraf/));
+    });
+    
+    test('should replace groups with input', function () {
+        assertEquals('shows/hest/34/', regex_to_string(/^shows\/(\w+)\/(\d+)\/$/, ['hest', 34]));
+        assertEquals('shows/giraf/90/', regex_to_string(/^shows\/(hest(?:laks|makrel))\/(\d+)\/$/, ['giraf', 90]));
+    });
 
 run();
+

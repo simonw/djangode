@@ -94,7 +94,8 @@ exports.makeApp = function(urls, options) {
     options = options || {};
     var show_404 = (options.show_404 || default_show_404);
     var show_500 = (options.show_500 || default_show_500);
-    return function(req, res) {
+
+    var app = function(req, res) {
         debuginfo.last_request = req;
         debuginfo.last_response = res;
         var path = url.parse(req.url)["pathname"];
@@ -120,6 +121,9 @@ exports.makeApp = function(urls, options) {
             show_500(req, res, e);
         }
     }
+    app.urls = {};
+    urls.forEach(function (item) { app.urls[item[2]] = item[0]; });
+    return app;
 }
 
 function default_show_404(req, res) {

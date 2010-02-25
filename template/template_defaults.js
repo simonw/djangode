@@ -23,17 +23,12 @@ NOTE:
 Missing tags:
 
     ssi (will require ALLOWED_INCLUDE_ROOTS somehow)
-        
     debug
-
-    regroup
-    widthratio
-
-    url
 
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
     load takes a path - like require. Loaded module must expose tags and filters objects.
+    url tag relies on app being set in process.djangode_app_config 
 */
 
 var filters = exports.filters = {
@@ -590,8 +585,43 @@ var nodes = exports.nodes = {
 
             callback(false, Math.round(current_val / max_val * constant_val) + "");
         }
-    }
+    },
 
+    RegroupNode: function (item, key, name) {
+        return function (context, callback) {
+            var list = context.get(item);
+            if (!list instanceof Array) { callback(false, ''); }
+
+            var dict = {};
+            var grouped = list
+                .map(function (x) { return x[key]; })
+                .filter(function (x) { var val = dict[x]; dict[x] = x; return !val; })
+                .map(function (grp) {
+                    return { grouper: grp, list: list.filter(function (o) { return o[key] === grp }) };
+                });
+
+            context.set(name, grouped);
+            callback(false, '');
+        }
+    },
+
+    UrlNode: function (url_name, replacements, item_name) {
+
+        return function (context, callback) {
+            var match = process.djangode_urls[context.get(url_name)]
+            if (!match) { return callback('no matching urls for ' + url_name_val); }
+
+            var url = string_utils.regex_to_string(match, replacements.map(function (x) { return context.get(x); }));
+            url = '/' + url;
+            
+            if (item_name) {
+                context.set( item_name, url);
+                callback(false, '');
+            } else {
+                callback(false, url);
+            }
+        }
+    }
 };
 
 var tags = exports.tags = {
@@ -798,5 +828,25 @@ var tags = exports.tags = {
         return nodes.SpacelessNode(node_list);
     },
     'widthratio': simple_tag(nodes.WithRatioNode, { argcount: 3 }),
+    'regroup': simple_tag(nodes.RegroupNode, { argcount: 5, mustbe: { 2: 'by', 4: 'as' }, exclude: [2, 4] }),
+
+    'url': function (parser, token) {
+        var parts = token.split_contents();
+        parts.shift();
+
+        var url_name = parts.shift();
+
+        if (parts[parts.length - 2] === 'as') {
+            var item_name = parts.pop();
+            parts.pop();
+        }
+
+        // TODO: handle qouted strings with commas in them correctly
+        var replacements = parts.join('').split(/\s*,\s*/)
+
+        return nodes.UrlNode(url_name, replacements, item_name);
+    }
+
+
 };
 

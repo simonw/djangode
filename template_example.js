@@ -59,4 +59,5 @@ var app = dj.makeApp([
 ]);
 
 dj.serve(app, 8009);
+process.djangode_urls = app.urls;
 

@@ -203,4 +203,57 @@ function wordwrap (str, int_width, str_break, cut) {
 exports.wordwrap = wordwrap;
 
 
+// replace groups in regex like string with replacer
+function replace_groups(input, replacer) {
+    var i, out = '', cnt = 0;
+    for (i = 0; i < input.length; i += 1) {
+        if (input[i] === '\\') {
+            if (cnt === 0) {
+                out += input[i] + input[i + 1];
+            }
+            i += 1; 
+            continue;
+        }
+        if (cnt === 0 && input[i] !== '(') {
+            out += input[i];
+            continue;
+        }
+        if (input[i] === '(') {
+            cnt += 1;
+        } else if (input[i] === ')') {
+            cnt -= 1;
+            if (cnt === 0) {
+                out += replacer;
+            }
+        }
+    }
+    return out;
+}
+
+exports.regex_to_string = function (re, group_replacements) {
+    var s = re.toString();
+
+    // remove leading and trailing slashes
+    s = s.substr(1, s.length - 2);
+
+    // replace groups with '(())'
+    s = replace_groups(s, '(())');
+
+    // remove special chars
+    s = s.replace(/\^|\$|\*|\+|\?|\.|\\cX|\\xhh|\\uhhhh|\\./g, function (m) {
+        if (m[0] === '\\') {
+            if (m.substr(1).match(/f|r|n|t|v|\d+|b|s|S|w|W|d|D|b|B/)) { return ''; } 
+            if (m.substr(1).match(/c.|x..|u..../)) { return eval("'" + m + "'"); }
+            return m[1];
+        }
+        return '';
+    });
+
+    // replace groups with replacers
+    s = s.replace(/\(\(\)\)/g, function () { return (group_replacements || []).shift() || ''; });
+
+    return s;
+}
+
+
 
