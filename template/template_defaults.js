@@ -2,7 +2,12 @@
 /*global require, process, exports, escape */
 
 var sys = require('sys');
-var utils = require('utils/utils');
+var string_utils = require('../utils/string');
+var date_utils = require('../utils/date');
+var html = require('../utils/html');
+var iter = require('../utils/iter');
+
+process.mixin(GLOBAL, require('../utils/tags'));
 
 /* TODO: Missing filters
 
@@ -11,34 +16,24 @@ var utils = require('utils/utils');
 
     Not implemented (yet):
         unordered_list
-        wordcount
-        wordwrap
-        yesno
 
 NOTE:
     stringformat() filter is regular sprintf compliant and doesn't have real python syntax
 
 Missing tags:
-    for ( missing 'empty' tag )
 
-    include
-    ssi
-    load
-
+    ssi (will require ALLOWED_INCLUDE_ROOTS somehow)
+        
     debug
 
-    ifchanged
-    ifequal
-    ifnotequal
-    now
     regroup
-    spaceless
-    templatetag
-    url
     widthratio
+
+    url
 
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
+    load takes a path - like require. Loaded module must expose tags and filters objects.
 */
 
 var filters = exports.filters = {
@@ -47,13 +42,13 @@ var filters = exports.filters = {
         arg = arg - 0;
         return (isNaN(value) || isNaN(arg)) ? '' : (value + arg);
     },
-    addslashes: function (value, arg) { return utils.string.add_slashes("" + value); },
-    capfirst: function (value, arg) { return utils.string.cap_first("" + value); },
-    center: function (value, arg) { return utils.string.center("" + value, arg - 0); },
+    addslashes: function (value, arg) { return string_utils.add_slashes("" + value); },
+    capfirst: function (value, arg) { return string_utils.cap_first("" + value); },
+    center: function (value, arg) { return string_utils.center("" + value, arg - 0); },
     cut: function (value, arg) { return ("" + value).replace(new RegExp(arg, 'g'), ""); },
     date: function (value, arg) {
         // TODO: this filter may be unsafe...
-        return (value instanceof Date) ? utils.date.format_date(value, arg) : '';
+        return (value instanceof Date) ? date_utils.format_date(value, arg) : '';
     },
     'default': function (value, arg) {
         // TODO: this filter may be unsafe...
@@ -112,7 +107,7 @@ var filters = exports.filters = {
     },
     force_escape: function (value, arg, safety) {
         safety.is_safe = true;
-        return utils.html.escape("" + value);
+        return html.escape("" + value);
     },
     get_digit: function (value, arg) {
         if (typeof value !== 'number' || typeof arg !== 'number' || arg < 1) { return value; }
@@ -131,12 +126,12 @@ var filters = exports.filters = {
     length: function (value, arg) { return value.length ? value.length : 0; },
     length_is: function (value, arg) { return value.length === arg; },
     linebreaks: function (value, arg, safety) {
-        var out = utils.html.linebreaks("" + value, { escape: !safety.is_safe && safety.must_escape });
+        var out = html.linebreaks("" + value, { escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
         return out;
     },
     linebreaksbr: function (value, arg, safety) {
-        var out = utils.html.linebreaks("" + value, { onlybr: true, escape: !safety.is_safe && safety.must_escape });
+        var out = html.linebreaks("" + value, { onlybr: true, escape: !safety.is_safe && safety.must_escape });
         safety.is_safe = true;
         return out;
     },
@@ -147,9 +142,9 @@ var filters = exports.filters = {
         var out = lines
             .map(function (s, idx) {
                 if (!safety.is_safe && safety.must_escape) {
-                    s = utils.html.escape("" + s);
+                    s = html.escape("" + s);
                 }
-                return utils.string.sprintf('%0' + len + 'd. %s', idx + 1, s); })
+                return string_utils.sprintf('%0' + len + 'd. %s', idx + 1, s); })
             .join('\n');
         safety.is_safe = true;
         return out;
@@ -157,7 +152,7 @@ var filters = exports.filters = {
     ljust: function (value, arg) {
         arg = arg - 0;
         try {
-            return utils.string.sprintf('%-' + arg + 's', value).substr(0, arg);
+            return string_utils.sprintf('%-' + arg + 's', value).substr(0, arg);
         } catch (e) {
             return '';
         }
@@ -192,7 +187,7 @@ var filters = exports.filters = {
     },
     rjust: function (value, arg) {
         try {
-            return utils.string.sprintf('%' + arg + 's', value).substr(0, arg);
+            return string_utils.sprintf('%' + arg + 's', value).substr(0, arg);
         } catch (e) {
             return '';
         }
@@ -229,35 +224,39 @@ var filters = exports.filters = {
     },
     stringformat: function (value, arg) {
         // TODO: this filter may not be safe
-        try { return utils.string.sprintf('%' + arg, value); } catch (e) { return ''; }
+        try { return string_utils.sprintf('%' + arg, value); } catch (e) { return ''; }
     },
     striptags: function (value, arg, safety) {
         safety.is_safe = true;
         return String(value).replace(/<(.|\n)*?>/g, '');
     },
     title: function (value, arg) {
-        return utils.string.titleCaps( String(value) );
+        return string_utils.titleCaps( String(value) );
     },
     time: function (value, arg) {
         // TODO: this filter may not be safe
-        return (value instanceof Date) ? utils.date.format_time(value, arg) : '';
+        return (value instanceof Date) ? date_utils.format_time(value, arg) : '';
     },
     timesince: function (value, arg) {
-        value = new Date(value), arg = new Date(arg);
+        // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
+        value = new Date(value);
+        arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
-        return utils.date.timesince(value, arg);
+        return date_utils.timesince(value, arg);
     },
     timeuntil: function (value, arg) {
-        value = new Date(value), arg = new Date(arg);
+        // TODO: this filter may not be safe (if people decides to put & or " in formatstrings"
+        value = new Date(value);
+        arg = new Date(arg);
         if (isNaN(value) || isNaN(arg)) { return ''; }
-        return utils.date.timeuntil(value, arg);
+        return date_utils.timeuntil(value, arg);
     },
     truncatewords: function (value, arg) {
         return String(value).split(/\s+/g).slice(0, arg).join(' ') + ' ...';
     },
     truncatewords_html: function (value, arg, safety) {
         safety.is_safe = true;
-        return utils.html.truncate_html_words(value, arg - 0);
+        return html.truncate_html_words(value, arg - 0);
     },
     upper: function (value, arg) {
         return (value + '').toUpperCase();
@@ -267,71 +266,93 @@ var filters = exports.filters = {
     },
     urlize: function (value, arg, safety) {
         if (!safety.is_safe && safety.must_escape) {
-            var out = utils.html.urlize(value + "", { escape: true });
+            var out = html.urlize(value + "", { escape: true });
             safety.is_safe = true;
             return out;
         }
-        return utils.html.urlize(value + "");
+        return html.urlize(value + "");
     },
     urlizetrunc: function (value, arg, safety) {
         if (!safety.is_safe && safety.must_escape) {
-            var out = utils.html.urlize(value + "", { escape: true, limit: arg });
+            var out = html.urlize(value + "", { escape: true, limit: arg });
             safety.is_safe = true;
             return out;
         }
-        return utils.html.urlize(value + "", { limit: arg });
+        return html.urlize(value + "", { limit: arg });
+    },
+    wordcount: function (value, arg) {
+        return (value + "").split(/\s+/g).length;
+    },
+    wordwrap: function (value, arg) {
+        return string_utils.wordwrap(value + "", arg - 0);
+    },
+    yesno: function (value, arg) {
+        var responses = (arg + "").split(/,/g);
+        if (responses[2] && (value === undefined || value === null)) { return responses[2]; }
+        return (value ? responses[0] : responses[1]) || '';
     }
+
 };
 
 
 var nodes = exports.nodes = {
 
     TextNode: function (text) {
-        return function () { return text; };
+        return function (context, callback) { callback(false, text); };
     },
 
     VariableNode: function (filterexpression) {
-        return function (context) {
-            return filterexpression.resolve(context);
+        return function (context, callback) {
+            callback(false, filterexpression.resolve(context));
         };
     },
 
-    ForNode: function (itemname, listname, node_list, isReversed) {
+    ForNode: function (node_list, empty_list, itemname, listname, isReversed) {
 
-        return function (context) {
+        return function (context, callback) {
             var forloop = { parentloop: context.get('forloop') },
                 list = context.get(listname),
                 out = '';
 
-            if (! list instanceof Array) { return nodes.TextNode(''); }
+            if (! list instanceof Array) { throw 'list not iterable' }
             if (isReversed) { list = list.slice(0).reverse(); }
+
+            if (list.length === 0) {
+                if (empty_list) {
+                    empty_list.evaluate(context, callback);
+                } else {
+                    callback(false, '');
+                }
+                return;
+            }
 
             context.push();
             context.set('forloop', forloop);
 
-            list.forEach( function (o, idx, iter) {
+            function inner(p, c, idx, list, next) {
                 process.mixin(forloop, {
                     counter: idx + 1,
                     counter0: idx,
-                    revcounter: iter.length - idx,
-                    revcounter0: iter.length - (idx + 1),
+                    revcounter: list.length - idx,
+                    revcounter0: list.length - (idx + 1),
                     first: idx === 0,
-                    last: idx === iter.length - 1
+                    last: idx === list.length - 1
                 });
-                context.set(itemname, o);
+                context.set(itemname, c);
 
-                out += node_list.evaluate( context );
+                node_list.evaluate( context, function (error, result) { next(error, p + result); });
+            }
+
+            iter.reduce(list, inner, '', function (error, result) {
+                context.pop();
+                callback(error, result);
             });
-
-            context.pop();
-
-            return out;
         };
     },
 
     IfNode: function (item_names, not_item_names, operator, if_node_list, else_node_list) {
 
-        return function (context) {
+        return function (context, callback) {
 
             function not(x) { return !x; }
             function and(p,c) { return p && c; }
@@ -344,40 +365,89 @@ var nodes = exports.nodes = {
             var isTrue = items.reduce( operator === 'or' ? or : and, true );
 
             if (isTrue) {
-                return if_node_list.evaluate( context );
-            } else if (else_node_list.length) {
-                return else_node_list.evaluate( context );
+                if_node_list.evaluate(context, function (error, result) { callback(error, result); });
+            } else if (else_node_list) {
+                else_node_list.evaluate(context, function (error, result) { callback(error, result); });
             } else {
-                return '';
+                callback(false, '');
             }
         };
     },
+
+    IfChangedNode: function (node_list, else_list, parts) {
+        var last;
+
+        return function (context, callback) {
+            node_list.evaluate(context, function (error, result) {
+                if (result !== last) {
+                    last = result;
+                    callback(error, result);
+                } else if (!error && else_list) {
+                    else_list.evaluate(context, callback);
+                } else {
+                    callback(error, '');
+                }
+            });
+        };
+    },
+
+    IfEqualNode: function (node_list, else_list, first, second) {
+        return function (context, callback) {
+            if (context.get(first) == context.get(second)) {
+                node_list.evaluate(context, callback);
+            } else if (else_list) {
+                else_list.evaluate(context, callback);
+            } else {
+                callback(false, '');
+            }
+        };
+    },
+
+    IfNotEqualNode: function (node_list, else_list, first, second) {
+        return function (context, callback) {
+            if (context.get(first) != context.get(second)) {
+                node_list.evaluate(context, callback);
+            } else if (else_list) {
+                else_list.evaluate(context, callback);
+            } else {
+                callback(false, '');
+            }
+        };
+    },
+
 
     CycleNode: function (items) {
 
         var cnt = 0;
 
-        return function (context) {
+        return function (context, callback) {
 
             var choices = items.map( context.get, context );
             var val = choices[cnt];
             cnt = (cnt + 1) % choices.length;
-            return val;
+            callback(false, val);
         };
     },
 
     FilterNode: function (expression, node_list) {
-        return function (context) {
-            expression.constant = node_list.evaluate( context );
-            return expression.resolve(context);
+        return function (context, callback) {
+            node_list.evaluate( context, function (error, constant) {
+                expression.constant = constant;
+                callback(error, expression.resolve(context));
+            });
         };
     },
 
-    BlockNode: function (name, node_list) {
+    BlockNode: function (node_list, name) {
 
-        return function (context) {
-
-            var out = '';
+        /* upon execution each block stores it's nodelist in the context
+         * indexed by the blocks name. As templates are executed from child to
+         * parent, similar named blocks add their nodelist to an array of
+         * nodelists (still indexed by the blocks name). When the root template
+         * is reached, the blocks nodelists are executed one after each other
+         * and the super variable is updated down through the hierachy.
+        */
+        return function (context, callback) {
 
             // init block list if it isn't already
             if (!context.blocks[name]) {
@@ -389,62 +459,142 @@ var nodes = exports.nodes = {
 
             // if this is a root template descend through templates and evaluate blocks for overrides
             if (!context.extends) {
+
                 context.push();
 
-                context.blocks[name].forEach( function (list) {
-                    out = list.evaluate( context );
-                    context.set('block', { super: out });
+                function inner(p, c, idx, block_list, next) {
+                    c.evaluate( context, function (error, result) {
+                        context.set('block', { super: result });
+                        next(error, result);
+                    });
+                }
+                iter.reduce( context.blocks[name], inner, '', function (error, result) {
+                    context.pop();
+                    callback(error, result);
                 });
 
-                context.pop();
+            } else {
+                // else return empty string
+                callback(false, '');
             }
-
-            return out;
         };
     },
 
     ExtendsNode: function (item) {
-        return function (context) {
+        return function (context, callback) {
             context.extends = context.get(item);
-            return '';
+            callback(false, '');
         };
     },
 
-    AutoescapeNode: function (enable, node_list) {
-        return function (context) {
+    AutoescapeNode: function (node_list, enable) {
+
+        if (enable.toLowerCase() === 'on') {
+            enable = true;
+        } else {
+            enable = false;
+        }
+
+        return function (context, callback) {
             var before = context.autoescaping;
             context.autoescaping = enable;
-            out = node_list.evaluate( context );
-            context.autoescaping = before;
-            return out;
+            node_list.evaluate( context, function ( error, result ) {
+                context.autoescaping = before;
+                callback(error, result);
+            });
         }
     },
 
-    FirstOfNode: function (choices) {
-        return function (context) {
-            var i, val;
+    FirstOfNode: function (/*...*/) {
+    
+        var choices = Array.prototype.slice.apply(arguments);
+
+        return function (context, callback) {
+            var i, val, found;
             for (i = 0; i < choices.length; i++) {
-                var val = context.get(choices[i]);
-                if (val) { return val; }
+                val = context.get(choices[i]);
+                if (val) { found = true; break; }
             }
-            return '';
-        }
+            callback(false, found ? val : '')
+        };
     },
 
-    WithNode: function (variable, name, node_list) {
-        return function (context) {
+    WithNode: function (node_list, variable, name) {
+        return function (context, callback) {
             var item = context.get(variable);
             context.push();
             context.set(name, item);
-            var out = node_list.evaluate( context );
-            context.pop();
-            return out;
+            node_list.evaluate( context, function (error, result) {
+                context.pop();
+                callback(error, result);
+            });
+        }
+    },
+
+    NowNode: function (format) {
+        if (format.match(/^["']/)) {
+            format = format.slice(1, -1);
+        }
+        return function (context, callback) {
+            callback(false, date_utils.format_date(new Date(), format));
+        };
+    },
+
+    IncludeNode: function (name) {
+        return function (context, callback) {
+            var loader = require('./loader');
+            loader.load_and_render(context.get(name), context, callback);
+        }
+    },
+
+    LoadNode: function (path, package) {
+        return function (context, callback) {
+            process.mixin(context.filters, package.filters);
+            callback(false, '');
+        }
+    },
+
+    TemplateTagNode: function (type) {
+        return function (context, callback) {
+            var bits = {
+                openblock: '{%',
+                closeblock: '%}',
+                openvariable: '{{',
+                closevariable: '}}',
+                openbrace: '{',
+                closebrace: '}',
+                opencomment: '{#',
+                closecomment: '#}'
+            };
+            if (!bits[type]) {
+                callback('unknown bit');
+            } else {
+                callback(false, bits[type]);
+            }
+        }
+    },
+
+    SpacelessNode: function (node_list) {
+        return function (context, callback) {
+            node_list.evaluate(context, function (error, result) {
+                callback(error, html.strip_spaces_between_tags(result + ""));
+            });
+        }
+    },
+
+    WithRatioNode: function (current, max, constant) {
+        return function (context, callback) {
+            current_val = context.get(current);
+            max_val = context.get(max);
+            constant_val = context.get(constant);
+
+            callback(false, Math.round(current_val / max_val * constant_val) + "");
         }
     }
 
 };
 
-var callbacks = exports.callbacks = {
+var tags = exports.tags = {
     'text': function (parser, token) { return nodes.TextNode(token.contents); },
 
     'variable': function (parser, token) {
@@ -452,34 +602,31 @@ var callbacks = exports.callbacks = {
     },
 
     'comment': function (parser, token) {
-        parser.parse('endcomment');
+        parser.parse('end' + token.type);
         parser.delete_first_token();
         return nodes.TextNode('');
     },
 
     'for': function (parser, token) {
         
-        var parts = token.split_contents();
+        var parts = get_args_from_token(token, { exclude: 2, mustbe: { 2: 'in', 4: 'reversed'} });
 
-        if (parts[0] !== 'for' || parts[2] !== 'in' || (parts[4] && parts[4] !== 'reversed')) {
-            throw 'unexpected syntax in "for" tag: ' + token.contents;
+        var itemname = parts[0],
+            listname = parts[1],
+            isReversed = (parts[2] === 'reversed');
+
+        var node_list = parser.parse('empty', 'end' + token.type);
+        if (parser.next_token().type === 'empty') {
+            var empty_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
         }
-        
-        var itemname = parts[1],
-            listname = parts[3],
-            isReversed = (parts[4] === 'reversed'),
-            node_list = parser.parse('endfor');
 
-        parser.delete_first_token();
-
-        return nodes.ForNode(itemname, listname, node_list, isReversed);
+        return nodes.ForNode(node_list, empty_list, itemname, listname, isReversed);
     },
     
     'if': function (parser, token) {
 
         var parts = token.split_contents();
-
-        if (parts[0] !== 'if') { throw 'unexpected syntax in "if" tag'; }
 
         // get rid of if keyword
         parts.shift();
@@ -508,21 +655,61 @@ var callbacks = exports.callbacks = {
             }
         }
 
-        var node_list, else_list = [];
+        var node_list, else_list;
         
-        node_list = parser.parse('else', 'endif');
+        node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
-            else_list = parser.parse('endif');
+            else_list = parser.parse('end' + token.type);
             parser.delete_first_token();
         }
 
         return nodes.IfNode(item_names, not_item_names, operator, node_list, else_list);
     },
 
+    'ifchanged': function (parser, token) {
+        var parts = get_args_from_token(token);
+
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
+
+        return nodes.IfChangedNode(node_list, else_list, parts);
+    },
+
+    'ifequal': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 2 });
+
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
+
+        return nodes.IfEqualNode(node_list, else_list, parts[0], parts[1]);
+    },
+
+    'ifnotequal': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 2 });
+
+        var node_list, else_list;
+        
+        node_list = parser.parse('else', 'end' + token.type);
+        if (parser.next_token().type === 'else') {
+            else_list = parser.parse('end' + token.type);
+            parser.delete_first_token();
+        }
+
+        return nodes.IfNotEqualNode(node_list, else_list, parts[0], parts[1]);
+    },
+
     'cycle': function (parser, token) {
         var parts = token.split_contents();
-
-        if (parts[0] !== 'cycle') { throw 'unexpected syntax in "cycle" tag'; }
 
         var items = parts.slice(1);
         var as_idx = items.indexOf('as');
@@ -554,7 +741,7 @@ var callbacks = exports.callbacks = {
 
     'filter': function (parser, token) {
         var parts = token.split_contents();
-        if (parts[0] !== 'filter' || parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
+        if (parts.length > 2) { throw 'unexpected syntax in "filter" tag'; }
 
         var expr = parser.make_filterexpression('|' + parts[1]);
 
@@ -563,62 +750,53 @@ var callbacks = exports.callbacks = {
 
         return nodes.FilterNode(expr, node_list);
     },
-    
-    'block': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'block' || parts.length !== 2) { throw 'unexpected syntax in "block" tag'; }
-        var name = parts[1];
-
-        var node_list = parser.parse('endblock');
-        parser.delete_first_token();
-
-        return nodes.BlockNode(name, node_list);
-    },
-
-    'extends': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'extends' || parts.length !== 2) { throw 'unexpected syntax in "extends" tag'; }
-        var name = parts[1];
-
-        return nodes.ExtendsNode(name);
-    },
 
     'autoescape': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'autoescape' || parts.length !== 2) { throw 'unexpected syntax in "autoescape" tag'; }
-        var enable;
-        if (parts[1] === 'on') {
-            enable = true;
-        } else if (parts[1] === 'off' ) {
-            enable = false;
-        } else {
-            throw 'unexpected syntax in "autoescape" tag. Expected on or off';
-        }
-
-        var node_list = parser.parse('endautoescape');
+        var parts = get_args_from_token(token, { argcount: 1, mustbe: { 1: ['on', 'off'] }});
+        var node_list = parser.parse('end' + token.type);
         parser.delete_first_token();
-
-        return nodes.AutoescapeNode(enable, node_list);
+        return nodes.AutoescapeNode(node_list, parts[0]);
+    },
+    
+    'block': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 1 });
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.BlockNode(node_list, parts[0]);
     },
 
-    'firstof': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'firstof') { throw 'unexpected syntax in "firstof" tag'; }
-        return nodes.FirstOfNode( parts.slice(1) );
-    },
+    'extends': simple_tag(nodes.ExtendsNode, { argcount: 1 }),
+
+    'firstof': simple_tag(nodes.FirstOfNode),
 
     'with': function (parser, token) {
-        var parts = token.split_contents();
-        if (parts[0] !== 'with' || parts[2] !== 'as' || parts.length !== 4) {
-            throw 'unexpected syntax in "with" tag';
-        }
-        var node_list = parser.parse('endwith');
+        var parts = get_args_from_token(token, { argcount: 3, exclude: 2, mustbe: { 2: 'as' }});
+        var node_list = parser.parse('end' + token.type);
         parser.delete_first_token();
+        return nodes.WithNode(node_list, parts[0], parts[1], parts[2]);
+    },
+    
+    'now': simple_tag(nodes.NowNode, { argcount: 1 }),
+    'include': simple_tag(nodes.IncludeNode, { argcount: 1 }),
+    'load': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 1 });
+        var name = parts[0];
+        if (name[0] === '"' || name[0] === "'") {
+            name = name.substr(1, name.length - 2);
+        }
 
-        return nodes.WithNode(parts[1], parts[3], node_list);
-    }
+        var package = require(name);
+        process.mixin(parser.tags, package.tags);
 
+        return nodes.LoadNode(name, package);
+    },
+    'templatetag': simple_tag(nodes.TemplateTagNode, { argcount: 1 }),
+    'spaceless': function (parser, token) {
+        var parts = get_args_from_token(token, { argcount: 0 });
+        var node_list = parser.parse('end' + token.type);
+        parser.delete_first_token();
+        return nodes.SpacelessNode(node_list);
+    },
+    'widthratio': simple_tag(nodes.WithRatioNode, { argcount: 3 }),
 };
-
-
 

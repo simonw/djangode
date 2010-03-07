@@ -1,6 +1,6 @@
 var http = require('http'),
     sys = require('sys'),
-    posix = require('posix'),
+    fs = require('fs'),
     url = require('url');
 
 function extname(path) {
@@ -21,8 +21,13 @@ exports.serveFile = function(req, res, filename) {
             return;
         }
         sys.puts("loading " + filename + "...");
-        var promise = posix.cat(filename, encoding);
-        promise.addCallback(function(data) {
+        fs.readFile(filename, encoding, function (error, data) {
+            if (error) {
+                status = 404;
+                body = '404'
+                sys.puts("Error loading " + filename);
+                return callback();
+            }
             body = data;
             headers = [
                 ['Content-Type', content_type],
@@ -34,17 +39,11 @@ exports.serveFile = function(req, res, filename) {
             sys.puts("static file " + filename + " loaded");
             callback();
         });
-        promise.addErrback(function() {
-            status = 404;
-            body = '404'
-            sys.puts("Error loading " + filename);
-            callback();
-        });
     }
     loadResponseData(function() {
         res.sendHeader(status, headers);
-        res.sendBody(body, encoding);
-        res.finish();
+        res.write(body, encoding);
+        res.close();
     });
 }
 
@@ -58,8 +57,8 @@ function respond(res, body, content_type, status) {
     res.sendHeader(status || 200, {
         'Content-Type': content_type  + '; charset=utf-8'
     });
-    res.sendBody(body, 'utf8');
-    res.finish();
+    res.write(body, 'utf8');
+    res.close();
 }
 exports.respond = respond;
 
@@ -69,17 +68,17 @@ exports.redirect = redirect = function(res, location, status) {
         'Content-Type': 'text/html; charset=utf-8',
         'Location': location
     });
-    res.sendBody('Redirecting...');
-    res.finish();
+    res.write('Redirecting...');
+    res.close();
 }
 
 exports.extractPost = function(req, callback) {
     req.setBodyEncoding('utf-8');
     var body = '';
-    req.addListener('body', function(chunk) {
+    req.addListener('data', function(chunk) {
         body += chunk;
     });
-    req.addListener('complete', function() {
+    req.addListener('end', function() {
         callback(http.parseUri('http://fake/?' + body).params);
     });
 }

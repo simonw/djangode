@@ -1,6 +1,6 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('utils/test').dsl);
-process.mixin(GLOBAL, require('template/template'));
+process.mixin(GLOBAL, require('../utils/test').dsl);
+process.mixin(GLOBAL, require('./template'));
 
 testcase('Test tokenizer');
     test('sanity test', function () {
@@ -151,14 +151,32 @@ testcase('Context test');
     });
 
 testcase('parser')
-    test('should parse', function () {
+    test_async('should parse', function (testcontext, complete) {
         t = parse('hest');
-        assertEquals('hest', t.render());
+        t.render({}, function (error, result) {
+            assertEquals('hest', result, complete);
+            end_async_test( complete );
+        });
     });
     test('node_list only_types should return only requested typed', function () {
         t = parse('{% comment %}hest{% endcomment %}hest{% comment %}laks{% endcomment %}{% hest %}');
         assertEquals(['comment','comment'], t.node_list.only_types('comment').map(function(x){return x.type}));
         assertEquals(['text','UNKNOWN'], t.node_list.only_types('text', 'UNKNOWN').map(function(x){return x.type}));
+    });
+
+testcase('nodelist evaluate');
+    test_async('should work sync', function (testcontext, complete) {
+
+        var context = {};
+        var node_list = make_nodelist();
+        node_list.append( function (context, callback) { callback(false, 'hest'); }, 'test');
+        node_list.append( function (context, callback) { callback(false, 'giraf'); }, 'test');
+        node_list.append( function (context, callback) { callback(false, ' med lang hals'); }, 'test');
+
+        node_list.evaluate( context, function (error, result) {
+            assertEquals('hestgiraf med lang hals', result, complete);
+            end_async_test( complete );
+        });
     });
 
 run();

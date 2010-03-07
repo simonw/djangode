@@ -166,6 +166,14 @@ exports.urlize = urlize;
 
 
 
+/* Function: strip_spaces_between_tags
+       Returns the given HTML with spaces between tags removed.
+   Arguments:
+       input: string, the html to process
+*/
+exports.strip_spaces_between_tags = function (input) {
+    return input.replace(/>\s+</g, '><');
+}
 
 
 

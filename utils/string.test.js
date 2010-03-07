@@ -1,6 +1,6 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('utils/test').dsl);
-process.mixin(GLOBAL, require('utils/string'));
+process.mixin(GLOBAL, require('./test').dsl);
+process.mixin(GLOBAL, require('./string'));
 
 testcase('string utility functions');
     test('smart_split should split correctly', function () {
@@ -25,5 +25,9 @@ testcase('titleCaps')
             titleCaps("Q&A With Steve Jobs: 'That's What Happens In Technology'")
         );
     })
+testcase('wrap')
+    test('should wrap text', function () {
+        assertEquals('Joel \nis a \nslug', wordwrap('Joel is a slug', 5));
+    });
 
 run();

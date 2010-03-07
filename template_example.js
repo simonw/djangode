@@ -1,10 +1,10 @@
-var posix = require('posix'),
-    sys = require('sys'),
-    dj = require('djangode'),
-    template_system = require('template/template');
+var sys = require('sys'),
+    dj = require('./djangode'),
+    template_system = require('./template/template');
+    template_loader = require('./template/loader');
 
 // set template path
-template_system.loader.set_path('template-demo');
+template_loader.set_path('template-demo');
 
 // context to use when rendering template. In a real app this would likely come from a database
 var test_context = {
@@ -23,18 +23,39 @@ var test_context = {
 
 // make app
 var app = dj.makeApp([
-    ['^/(template-demo/.*)$', dj.serveFile],
+    ['^/$', function(req, res) {
+        dj.respond(res, '<h1>djangode template demo</h1> \
+            <ul> \
+                <li><a href="/template">The raw template</a></li> \
+                <li><a href="/context">The test context</a></li> \
+                <li><a href="/text">The template rendered as text</a></li> \
+                <li><a href="/html">The template rendered as html</a></li> \
+            </ul> \
+        ');
+    }],
 
     ['^/template$', function (req, res) {
-        template_system.load('template.html', function(t) {
-            dj.respond(res, t.render(test_context));
-        });
+        dj.serveFile(req, res, 'template-demo/template.html');
+    }],
+
+    ['^/context$', function (req, res) {
+        dj.respond(res, sys.inspect(test_context), 'text/plain');
     }],
 
     ['^/text$', function (req, res) {
-        var html = template_system.load('template.html').render(test_context);
-        dj.respond(res, html, 'text/plain');
-    }]
+        template_loader.load_and_render('template.html', test_context, function (error, result) {
+            dj.respond(res, result, 'text/plain');
+        });
+    }],
+
+    ['^/html$', function (req, res) {
+        template_loader.load_and_render('template.html', test_context, function (error, result) {
+            dj.respond(res, result, 'text/html');
+        });
+    }],
+
+    ['^/(template-demo/.*)$', dj.serveFile],
+
 ]);
 
 dj.serve(app, 8009);
