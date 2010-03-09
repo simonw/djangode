@@ -9,7 +9,9 @@ exports.reduce = function reduce(array, iter_callback, initial, result_callback)
 
     (function inner (error, value) {
 
-        if (error) { result_callback(error); }
+        if (error) {
+            return result_callback(error);
+        }
         
         if (index < array.length) {
             process.nextTick( function () {

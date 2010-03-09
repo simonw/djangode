@@ -44,13 +44,21 @@ var app = dj.makeApp([
 
     ['^/text$', function (req, res) {
         template_loader.load_and_render('template.html', test_context, function (error, result) {
-            dj.respond(res, result, 'text/plain');
+            if (error) {
+                dj.default_show_500(req, res, error);
+            } else {
+                dj.respond(res, result, 'text/plain');
+            }
         });
     }],
 
     ['^/html$', function (req, res) {
         template_loader.load_and_render('template.html', test_context, function (error, result) {
-            dj.respond(res, result, 'text/html');
+            if (error) {
+                dj.default_show_500(req, res, error);
+            } else {
+                dj.respond(res, result, 'text/plain');
+            }
         });
     }],
 

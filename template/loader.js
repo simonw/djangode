@@ -12,12 +12,6 @@ var template_path = '/tmp';
 // TODO: get_template
     // should support subdirectories
 
-/*
-    template_loader.load_and_render('template.html', test_context, function(rendered) {
-        dj.respond(res, rendered);
-    });
-*/
-
 var load = exports.load = function (name, callback) {
     if (!callback) { throw 'loader.load() must be called with a callback'; }
 

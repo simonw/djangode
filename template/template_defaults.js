@@ -28,7 +28,7 @@ Missing tags:
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
     load takes a path - like require. Loaded module must expose tags and filters objects.
-    url tag relies on app being set in process.djangode_app_config 
+    url tag relies on app being set in process.djangode_urls 
 */
 
 var filters = exports.filters = {
@@ -609,10 +609,10 @@ var nodes = exports.nodes = {
 
         return function (context, callback) {
             var match = process.djangode_urls[context.get(url_name)]
-            if (!match) { return callback('no matching urls for ' + url_name_val); }
+            if (!match) { return callback('no matching urls for ' + url_name); }
 
             var url = string_utils.regex_to_string(match, replacements.map(function (x) { return context.get(x); }));
-            url = '/' + url;
+            if (url[0] !== '/') { url = '/' + url; }
             
             if (item_name) {
                 context.set( item_name, url);

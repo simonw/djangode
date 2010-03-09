@@ -166,6 +166,22 @@ exports.dsl = {
         };
     },
 
+    assertIsTrue: function (actual, callback) {
+        if (async_test_has_failed) { return; }
+        if (!actual) {
+            var exception = new AssertFailedException('\nExpected ' + sys.inspect(actual) + ' to be true\n'); 
+            if (callback) { callback(exception); } else { throw exception; }
+        }
+    },
+
+    assertIsFalse: function (actual, callback) {
+        if (async_test_has_failed) { return; }
+        if (actual) {
+            var exception = new AssertFailedException('\nExpected ' + sys.inspect(actual) + ' to be false\n'); 
+            if (callback) { callback(exception); } else { throw exception; }
+        }
+    },
+
     shouldThrow: function (func, args, this_context, callback) {
         if (async_test_has_failed) { return; }
         try {

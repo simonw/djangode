@@ -367,7 +367,7 @@ process.mixin(Template.prototype, {
         context.extends = '';
 
         this.node_list.evaluate(context, function (error, rendered) {
-            if (error) { callback(error); }
+            if (error) { return callback(error); }
 
             if (context.extends) {
                 var template_loader = require('./loader');

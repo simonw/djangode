@@ -255,5 +255,3 @@ exports.regex_to_string = function (re, group_replacements) {
     return s;
 }
 
-
-
