@@ -1,4 +1,3 @@
-
 Djangode Templates
 ==================
 
@@ -11,7 +10,7 @@ If not, I suggest you take a look at the really excellent documentation that is
 provided for it -  most of it is just as useful for Djangode templates, as it
 is for Django:
 
-http://docs.djangoproject.com/en/1.1/topics/templates/
+[Django Template Documentation](http://docs.djangoproject.com/en/1.1/topics/templates/)
 
 For now, let's look at how to use the templatesystem with Djangode and Node.js:
 
@@ -91,7 +90,7 @@ You can extend and inherit your templates from other templates by using the
 extend and block tags. See the Django template documentation for a description
 of this and some examples. Djangode templates work the same way!
 
-http://docs.djangoproject.com/en/1.1/topics/templates/#id1
+[Template inheritance](http://docs.djangoproject.com/en/1.1/topics/templates/#id1)
 
 Autoescaping
 ------------
@@ -112,7 +111,7 @@ Rendering that will provide output like this:
 The autoescaping in djangode follows the same rules as django templates - read
 in detail about it here:
 
-http://docs.djangoproject.com/en/1.1/topics/templates/#id2
+[Autoescaping](http://docs.djangoproject.com/en/1.1/topics/templates/#id2)
 
 Extending the template system
 -----------------------------
@@ -128,7 +127,7 @@ documentation on the subject. Djangode is JavaScript, not Python, but even
 though things are different Djangode templates builds upon the same ideas and
 uses the same concepts as Django:
 
-http://docs.djangoproject.com/en/1.1/howto/custom-template-tags/
+[Extending the template system](http://docs.djangoproject.com/en/1.1/howto/custom-template-tags/)
 
     exports.filters = {
         firstletter: function (value, arg, safety) {
@@ -271,7 +270,7 @@ Other differences from Django
 The cycle tag does not support the legacy notation {% cycle row1,row2,row3 %}.
 Use the new and improved syntax described in the django docs:
 
-http://docs.djangoproject.com/en/1.1/ref/templates/builtins/#cycle
+[Documentation for the cycle tag](http://docs.djangoproject.com/en/1.1/ref/templates/builtins/#cycle)
 
 ### Stringformat filter #######
 
@@ -281,7 +280,7 @@ function, and it has some (very few) nonstandard extensions. These are not
 supported by the djangode tag. Most of the time you won't have any problems
 though.
 
-http://code.google.com/p/sprintf/
+[sprintf() on Google Code](http://code.google.com/p/sprintf/)
 
 ### Url Tag #########
 
@@ -307,7 +306,7 @@ site.
 
 Read more about the url tag here:
 
-http://docs.djangoproject.com/en/1.1/ref/templates/builtins/#url
+[Django documentation for url tag](http://docs.djangoproject.com/en/1.1/ref/templates/builtins/#url)
 
 ### Unsupported Tags and Filters ########
 
