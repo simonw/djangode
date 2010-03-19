@@ -1,7 +1,9 @@
 var http = require('http'),
     sys = require('sys'),
     fs = require('fs'),
-    url = require('url');
+    url = require('url'),
+    querystring = require('querystring')
+;
 
 function extname(path) {
     var index = path.lastIndexOf('.');
@@ -79,7 +81,7 @@ exports.extractPost = function(req, callback) {
         body += chunk;
     });
     req.addListener('end', function() {
-        callback(http.parseUri('http://fake/?' + body).params);
+        callback(querystring.parse(url.parse('http://fake/?' + body).query));
     });
 }
 
