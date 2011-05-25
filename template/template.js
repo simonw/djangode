@@ -5,6 +5,7 @@ var sys = require('sys');
 var string_utils = require('../utils/string');
 var html = require('../utils/html');
 var iter = require('../utils/iter');
+var common = require('../utils/common');
 
 function normalize(value) {
     if (typeof value !== 'string') { return value; }
@@ -26,7 +27,7 @@ function Token(type, contents) {
     this.contents = contents;
 }
 
-process.mixin(Token.prototype, {
+common.extend(Token.prototype, {
     split_contents: function () {
         return string_utils.smart_split(this.contents);
     }
@@ -141,7 +142,7 @@ var FilterExpression = function (expression, constant) {
 
 };
 
-process.mixin(FilterExpression.prototype, {
+common.extend(FilterExpression.prototype, {
 
     consume: function (expression) {
         var m = filter_re.exec(expression);
@@ -239,7 +240,7 @@ function make_nodelist() {
     return node_list;
 }
 
-process.mixin(Parser.prototype, {
+common.extend(Parser.prototype, {
 
     parse: function () {
     
@@ -304,7 +305,7 @@ function Context(o) {
     this.filters = require('./template_defaults').filters;
 }
 
-process.mixin(Context.prototype, {
+common.extend(Context.prototype, {
     get: function (name) {
 
         if (typeof name !== 'string') { return name; }
@@ -358,7 +359,7 @@ function Template(input) {
     this.node_list = parser.parse();
 }
 
-process.mixin(Template.prototype, {
+common.extend(Template.prototype, {
     render: function (o, callback) {
 
         if (!callback) { throw 'template.render() must be called with a callback'; }

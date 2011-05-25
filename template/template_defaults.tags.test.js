@@ -2,8 +2,8 @@ var sys = require('sys');
 var fs = require('fs');
 var template = require('./template');
 
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template_defaults'));
+common.extend(GLOBAL, require('../utils/test').dsl);
+common.extend(GLOBAL, require('./template_defaults'));
 
 function write_file(path, content) {
     var file = fs.openSync(path, process.O_WRONLY | process.O_TRUNC | process.O_CREAT, 0666);

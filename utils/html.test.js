@@ -1,5 +1,5 @@
-process.mixin(GLOBAL, require('./test').dsl);
-process.mixin(GLOBAL, require('./html'));
+common.extend(GLOBAL, require('./test').dsl);
+common.extend(GLOBAL, require('./html'));
 
 testcase('tests for linebreaks()')
     test('should break lines into <p> and <br /> tags', function () {
