@@ -19,9 +19,14 @@ var load = exports.load = function (name, callback) {
         callback(false, cache[name]);
     } else {
         fs.readFile(template_path + '/' + name, function (error, s) {
-            if (error) { callback(error); }
-            cache[name] = template_system.parse(s);
-            callback(false, cache[name]);
+            if (error) { 
+            	callback(error); 
+            }
+            else
+            {
+            	cache[name] = template_system.parse(s);
+            	callback(false, cache[name]);
+           	}
         });
     }
 };
