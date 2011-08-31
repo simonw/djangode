@@ -1,5 +1,6 @@
-process.mixin(GLOBAL, require('./test').dsl);
-process.mixin(GLOBAL, require('./iter'));
+var mixin = require('./mixin').mixin;
+mixin(GLOBAL, require('./test').dsl);
+mixin(GLOBAL, require('./iter'));
 
 var events = require('events');
 var sys = require('sys');

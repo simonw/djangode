@@ -1,6 +1,8 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template_defaults'));
+var mixin = require('../utils/mixin').mixin;
+
+mixin(GLOBAL, require('../utils/test').dsl);
+mixin(GLOBAL, require('./template_defaults'));
 
 testcase('add')
     test('should add correctly', function () {
@@ -35,13 +37,13 @@ testcase('date')
     });
 testcase('default')
     test('work as expected', function () {
-        assertEquals(6, filters['default'](false, 6));  
+        assertEquals(6, filters['default'](false, 6));
     })
 testcase('default_if_none')
     test('work as expected', function () {
-        assertEquals(false, filters.default_if_none(false, 6));  
-        assertEquals(6, filters.default_if_none(null, 6));  
-        assertEquals(6, filters.default_if_none(undefined, 6));  
+        assertEquals(false, filters.default_if_none(false, 6));
+        assertEquals(6, filters.default_if_none(null, 6));
+        assertEquals(6, filters.default_if_none(undefined, 6));
     })
 testcase('Test dictsort filter');
     test('should sort correctly', function () {
@@ -243,9 +245,9 @@ testcase('linenumbers')
     });
 testcase('ljust')
     test('should left justify value i correctly sized field', function () {
-        assertEquals('hest      ', filters.ljust('hest', 10)); 
-        assertEquals('', filters.ljust('hest')); 
-        assertEquals('he', filters.ljust('hest', 2)); 
+        assertEquals('hest      ', filters.ljust('hest', 10));
+        assertEquals('', filters.ljust('hest'));
+        assertEquals('he', filters.ljust('hest', 2));
     });
 testcase('lower')
     test('should lowercase value', function () {
@@ -301,9 +303,9 @@ testcase('removetags');
     });
 testcase('rjust')
     test('should right justify value in correctly sized field', function () {
-        assertEquals('      hest', filters.rjust('hest', 10)); 
-        assertEquals('', filters.rjust('hest')); 
-        assertEquals('he', filters.rjust('hest', 2)); 
+        assertEquals('      hest', filters.rjust('hest', 10));
+        assertEquals('', filters.rjust('hest'));
+        assertEquals('he', filters.rjust('hest', 2));
     });
 testcase('slice')
     var arr = [0,1,2,3,4,5,6,7,8,9];

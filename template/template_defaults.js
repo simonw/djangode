@@ -3,11 +3,12 @@
 
 var sys = require('sys');
 var string_utils = require('../utils/string');
+var mixin = require('../utils/mixin').mixin;
 var date_utils = require('../utils/date');
 var html = require('../utils/html');
 var iter = require('../utils/iter');
 
-process.mixin(GLOBAL, require('../utils/tags'));
+mixin(GLOBAL, require('../utils/tags'));
 
 /* TODO: Missing filters
 
@@ -28,7 +29,7 @@ Missing tags:
 NOTE:
     cycle tag does not support legacy syntax (row1,row2,row3)
     load takes a path - like require. Loaded module must expose tags and filters objects.
-    url tag relies on app being set in process.djangode_urls 
+    url tag relies on app being set in process.djangode_urls
 */
 
 var filters = exports.filters = {
@@ -198,7 +199,7 @@ var filters = exports.filters = {
     slice: function (value, arg) {
         if (!(value instanceof Array)) { return []; }
         var parts = (arg || '').split(/:/g);
-        
+
         if (parts[1] === '') {
             parts[1] = value.length;
         }
@@ -325,7 +326,7 @@ var nodes = exports.nodes = {
             context.set('forloop', forloop);
 
             function inner(p, c, idx, list, next) {
-                process.mixin(forloop, {
+                mixin(forloop, {
                     counter: idx + 1,
                     counter0: idx,
                     revcounter: list.length - idx,
@@ -501,7 +502,7 @@ var nodes = exports.nodes = {
     },
 
     FirstOfNode: function (/*...*/) {
-    
+
         var choices = Array.prototype.slice.apply(arguments);
 
         return function (context, callback) {
@@ -544,7 +545,7 @@ var nodes = exports.nodes = {
 
     LoadNode: function (path, package) {
         return function (context, callback) {
-            process.mixin(context.filters, package.filters);
+            mixin(context.filters, package.filters);
             callback(false, '');
         }
     },
@@ -613,7 +614,7 @@ var nodes = exports.nodes = {
 
             var url = string_utils.regex_to_string(match, replacements.map(function (x) { return context.get(x); }));
             if (url[0] !== '/') { url = '/' + url; }
-            
+
             if (item_name) {
                 context.set( item_name, url);
                 callback(false, '');
@@ -638,7 +639,7 @@ var tags = exports.tags = {
     },
 
     'for': function (parser, token) {
-        
+
         var parts = get_args_from_token(token, { exclude: 2, mustbe: { 2: 'in', 4: 'reversed'} });
 
         var itemname = parts[0],
@@ -653,7 +654,7 @@ var tags = exports.tags = {
 
         return nodes.ForNode(node_list, empty_list, itemname, listname, isReversed);
     },
-    
+
     'if': function (parser, token) {
 
         var parts = token.split_contents();
@@ -686,7 +687,7 @@ var tags = exports.tags = {
         }
 
         var node_list, else_list;
-        
+
         node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
             else_list = parser.parse('end' + token.type);
@@ -700,7 +701,7 @@ var tags = exports.tags = {
         var parts = get_args_from_token(token);
 
         var node_list, else_list;
-        
+
         node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
             else_list = parser.parse('end' + token.type);
@@ -714,7 +715,7 @@ var tags = exports.tags = {
         var parts = get_args_from_token(token, { argcount: 2 });
 
         var node_list, else_list;
-        
+
         node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
             else_list = parser.parse('end' + token.type);
@@ -728,7 +729,7 @@ var tags = exports.tags = {
         var parts = get_args_from_token(token, { argcount: 2 });
 
         var node_list, else_list;
-        
+
         node_list = parser.parse('else', 'end' + token.type);
         if (parser.next_token().type === 'else') {
             else_list = parser.parse('end' + token.type);
@@ -787,7 +788,7 @@ var tags = exports.tags = {
         parser.delete_first_token();
         return nodes.AutoescapeNode(node_list, parts[0]);
     },
-    
+
     'block': function (parser, token) {
         var parts = get_args_from_token(token, { argcount: 1 });
         var node_list = parser.parse('end' + token.type);
@@ -805,7 +806,7 @@ var tags = exports.tags = {
         parser.delete_first_token();
         return nodes.WithNode(node_list, parts[0], parts[1], parts[2]);
     },
-    
+
     'now': simple_tag(nodes.NowNode, { argcount: 1 }),
     'include': simple_tag(nodes.IncludeNode, { argcount: 1 }),
     'load': function (parser, token) {
@@ -816,7 +817,7 @@ var tags = exports.tags = {
         }
 
         var package = require(name);
-        process.mixin(parser.tags, package.tags);
+        mixin(parser.tags, package.tags);
 
         return nodes.LoadNode(name, package);
     },

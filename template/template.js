@@ -5,6 +5,7 @@ var sys = require('sys');
 var string_utils = require('../utils/string');
 var html = require('../utils/html');
 var iter = require('../utils/iter');
+var mixin = require('../utils/mixin').mixin;
 
 function normalize(value) {
     if (typeof value !== 'string') { return value; }
@@ -26,7 +27,7 @@ function Token(type, contents) {
     this.contents = contents;
 }
 
-process.mixin(Token.prototype, {
+mixin(Token.prototype, {
     split_contents: function () {
         return string_utils.smart_split(this.contents);
     }
@@ -59,7 +60,7 @@ function tokenize(input) {
         var res = consume_until("{{", "{%");
 
         if (res[0]) { token_list.push( new Token('text', res[0]) ); }
-        
+
         if (res[1] === "{{") { return variable_tag; }
         if (res[1] === "{%") { return template_tag; }
         return undefined;
@@ -128,7 +129,7 @@ var FilterExpression = function (expression, constant) {
         if (parsed.constant !== undefined) { this.constant = normalize(parsed.constant); }
         if (parsed.variable !== undefined) { this.variable = normalize(parsed.variable); }
 
-        if (parsed.filter_name) { 
+        if (parsed.filter_name) {
             this.filter_list.push( this.make_filter_token(parsed) );
         }
 
@@ -141,7 +142,7 @@ var FilterExpression = function (expression, constant) {
 
 };
 
-process.mixin(FilterExpression.prototype, {
+mixin(FilterExpression.prototype, {
 
     consume: function (expression) {
         var m = filter_re.exec(expression);
@@ -239,10 +240,10 @@ function make_nodelist() {
     return node_list;
 }
 
-process.mixin(Parser.prototype, {
+mixin(Parser.prototype, {
 
     parse: function () {
-    
+
         var stoppers = Array.prototype.slice.apply(arguments);
         var node_list = make_nodelist();
         var token = this.token_list[0];
@@ -304,7 +305,7 @@ function Context(o) {
     this.filters = require('./template_defaults').filters;
 }
 
-process.mixin(Context.prototype, {
+mixin(Context.prototype, {
     get: function (name) {
 
         if (typeof name !== 'string') { return name; }
@@ -331,7 +332,7 @@ process.mixin(Context.prototype, {
 
                 if (typeof val === 'function') {
                     return val();
-                } else { 
+                } else {
                     return val;
                 }
             }
@@ -358,7 +359,7 @@ function Template(input) {
     this.node_list = parser.parse();
 }
 
-process.mixin(Template.prototype, {
+mixin(Template.prototype, {
     render: function (o, callback) {
 
         if (!callback) { throw 'template.render() must be called with a callback'; }

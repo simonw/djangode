@@ -1,6 +1,7 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template'));
+var mixin = require('../utils/mixin').mixin;
+mixin(GLOBAL, require('../utils/test').dsl);
+mixin(GLOBAL, require('./template'));
 
 testcase('Test tokenizer');
     test('sanity test', function () {
@@ -27,7 +28,7 @@ testcase('Test tokenizer');
 
 testcase('Filter Expression tests');
     test('should parse valid syntax', function () {
-        assertEquals( 
+        assertEquals(
             { variable: 'item', filter_list: [ { name: 'add' } ] },
             new FilterExpression("item|add")
         );

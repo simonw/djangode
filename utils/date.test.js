@@ -1,5 +1,6 @@
-process.mixin(GLOBAL, require('./test').dsl);
-process.mixin(GLOBAL, require('./date'));
+var mixin = require('../mixin').mixin;
+mixin(GLOBAL, require('./test').dsl);
+mixin(GLOBAL, require('./date'));
 var sys = require('sys');
 
 
@@ -78,7 +79,7 @@ testcase('timesince');
 
         date = new Date("Wed Nov 13 1980 10:36:13 GMT+0100 (CET)");
         assertEquals('1 year', timesince(date, now));
-        
+
         date = new Date("Wed Dec 02 1981 18:29:40 GMT+0100 (CET)"); // Random time on Britney Spears birthday :-)
         assertEquals('2 minutes', timesince(date, now));
 

@@ -1,9 +1,10 @@
 var sys = require('sys');
 var fs = require('fs');
 var template = require('./template');
+var mixin = require('../utils/mixin').mixin;
 
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template_defaults'));
+mixin(GLOBAL, require('../utils/test').dsl);
+mixin(GLOBAL, require('./template_defaults'));
 
 function write_file(path, content) {
     var file = fs.openSync(path, process.O_WRONLY | process.O_TRUNC | process.O_CREAT, 0666);
@@ -67,7 +68,7 @@ testcase('variable')
 
 
 testcase('ifnode')
-    setup(function () { return { obj: {a: true, b: false }}; }); 
+    setup(function () { return { obj: {a: true, b: false }}; });
 
     make_parse_and_execute_test('hest', '{% if a %}hest{% endif %}');
     make_parse_and_execute_test('', '{% if b %}hest{% endif %}');
@@ -84,12 +85,12 @@ testcase('comment')
     make_parse_and_execute_test('', '{% comment %} do not parse {% hest %} any of this{% endcomment %}');
 
 testcase('cycle')
-    setup(function () { return { obj: { c: 'C', items: [1,2,3,4,5,6,7,8,9] }}; }); 
+    setup(function () { return { obj: { c: 'C', items: [1,2,3,4,5,6,7,8,9] }}; });
     make_parse_and_execute_test('a1 b2 C3 a4 b5 C6 a7 b8 C9 ',
         '{% for item in items %}{% cycle \'a\' "b" c %}{{ item }} {% endfor %}');
 
-    make_parse_and_execute_test('a H b J c H a', 
-        '{% cycle "a" "b" "c" as tmp %} {% cycle "H" "J" as tmp2 %} ' + 
+    make_parse_and_execute_test('a H b J c H a',
+        '{% cycle "a" "b" "c" as tmp %} {% cycle "H" "J" as tmp2 %} ' +
         '{% cycle tmp %} {% cycle tmp2 %} {% cycle tmp %} {% cycle tmp2 %} {%cycle tmp %}',
         'should work with as tag'
     );
@@ -106,7 +107,7 @@ testcase('block and extend')
         write_file('/tmp/block_test_1.html', 'Joel is a slug');
         write_file('/tmp/block_test_2.html', 'Her er en dejlig {% block test %}hest{% endblock %}.');
         write_file('/tmp/block_test_3.html',
-            '{% block test1 %}hest{% endblock %}.' 
+            '{% block test1 %}hest{% endblock %}.'
             + '{% block test2 %} noget {% endblock %}'
         );
         write_file('/tmp/block_test_4.html',
@@ -172,7 +173,7 @@ testcase('with')
         var t = template.parse('{% with test.sub.func as tmp %}{{ tmp }}:{{ tmp }}{% endwith %}');
         var cnt = 0;
         var o = { test: { sub: { func: function () { cnt++; return cnt; } } } }
-    
+
         t.render(o, function (error, result) {
             if (error) {
                 fail( error, complete );
@@ -185,7 +186,7 @@ testcase('with')
     });
 
 testcase('ifchanged')
-    setup(function () { return {obj: { list:['hest','giraf','giraf','hestgiraf'] }}; }); 
+    setup(function () { return {obj: { list:['hest','giraf','giraf','hestgiraf'] }}; });
     make_parse_and_execute_test('hestgirafhestgiraf',
         '{% for item in list %}{% ifchanged %}{{ item }}{% endifchanged %}{%endfor%}'
     );
@@ -194,7 +195,7 @@ testcase('ifchanged')
     );
 
 testcase('ifequal')
-    setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; }); 
+    setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; });
 
     make_parse_and_execute_test('giraf', '{% ifequal "hest" "hest" %}giraf{%endifequal %}');
     make_parse_and_execute_test('giraf', '{% ifequal item "hest" %}giraf{%endifequal %}');
@@ -203,7 +204,7 @@ testcase('ifequal')
     make_parse_and_execute_test('tapir', '{% ifequal item fish %}giraf{% else %}tapir{%endifequal %}');
 
 testcase('ifnotequal')
-    setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; }); 
+    setup(function () { return {obj:{item: 'hest', other: 'hest', fish: 'laks' } }; });
 
     make_parse_and_execute_test('laks', '{% ifnotequal "hest" "giraf" %}laks{%endifnotequal %}');
     make_parse_and_execute_test('laks', '{% ifnotequal item "giraf" %}laks{%endifnotequal %}');
@@ -221,7 +222,7 @@ testcase('now')
         t.render({}, function (error, result) {
             if (error) {
                 fail(error, complete);
-            } else { 
+            } else {
                 assertEquals(expected, result, complete);
             }
             end_async_test(complete);
@@ -262,7 +263,7 @@ testcase('spaceless')
         '{% spaceless %}<p>\n        <a href="foo/">Foo</a>\n    </p>{% endspaceless %}');
 
 testcase('widthratio')
-    setup(function () { return {obj:{this_value: 175, max_value: 200 } }; }); 
+    setup(function () { return {obj:{this_value: 175, max_value: 200 } }; });
     make_parse_and_execute_test('88', '{% widthratio this_value max_value 100 %}');
 
 testcase('regroup')
@@ -284,7 +285,7 @@ testcase('regroup')
         '<li>Male:<ul><li>George Bush</li><li>Bill Clinton</li></ul></li>' +
         '<li>Female:<ul><li>Margaret Thatcher</li><li>Condoleezza Rice</li></ul></li>' +
         '<li>Unknown:<ul><li>Pat Smith</li></ul></li></ul>',
-        '{% regroup people by gender as gender_list %}' + 
+        '{% regroup people by gender as gender_list %}' +
         '<ul>{% for gender in gender_list %}<li>{{ gender.grouper }}:' +
         '<ul>{% for item in gender.list %}<li>{{ item.first_name }} {{ item.last_name }}</li>{% endfor %}' +
         '</ul></li>{% endfor %}</ul>');

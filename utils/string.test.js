@@ -1,7 +1,8 @@
 var sys = require('sys');
+var mixin = require('./mixin').mixin;
 
-process.mixin(GLOBAL, require('./test').dsl);
-process.mixin(GLOBAL, require('./string'));
+mixin(GLOBAL, require('./test').dsl);
+mixin(GLOBAL, require('./string'));
 
 testcase('string utility functions');
     test('smart_split should split correctly', function () {
@@ -38,7 +39,7 @@ testcase('regex_to_string')
         assertEquals('hest*', regex_to_string(/hest\*/));
         assertEquals('hestgiraf', regex_to_string(/hest(tobis)giraf/));
     });
-    
+
     test('should replace groups with input', function () {
         assertEquals('shows/hest/34/', regex_to_string(/^shows\/(\w+)\/(\d+)\/$/, ['hest', 34]));
         assertEquals('shows/giraf/90/', regex_to_string(/^shows\/(hest(?:laks|makrel))\/(\d+)\/$/, ['giraf', 90]));
