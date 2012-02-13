@@ -1,7 +1,6 @@
 /*jslint eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports, escape */
 
-var sys = require('sys');
 var string_utils = require('../utils/string');
 var mixin = require('../utils/mixin').mixin;
 var date_utils = require('../utils/date');

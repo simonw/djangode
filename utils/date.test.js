@@ -1,8 +1,6 @@
 var mixin = require('../mixin').mixin;
 mixin(GLOBAL, require('./test').dsl);
 mixin(GLOBAL, require('./date'));
-var sys = require('sys');
-
 
 testcase('date_format')
     test('should format each filter correctly', function () {

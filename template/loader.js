@@ -1,7 +1,6 @@
 /*jslint eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports, escape */
 
-var sys = require('sys');
 var fs = require('fs');
 var template_system = require('./template');
 

@@ -1,7 +1,7 @@
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
 
-var sys = require('sys');
+var util = require('util');
 var string_utils = require('../utils/string');
 var html = require('../utils/html');
 var iter = require('../utils/iter');
@@ -106,7 +106,7 @@ var FilterExpression = function (expression, constant) {
 
     var parsed = this.consume(expression);
 
-    //sys.debug(expression + ' => ' + sys.inspect( parsed ) );
+    //util.debug(expression + ' => ' + util.inspect( parsed ) );
 
     if (!parsed) {
         throw this.error(expression);
@@ -135,10 +135,10 @@ var FilterExpression = function (expression, constant) {
 
         parsed = this.consume(expression);
 
-        //sys.debug(expression + ' => ' + sys.inspect( parsed ) );
+        //util.debug(expression + ' => ' + util.inspect( parsed ) );
     }
 
-    //sys.debug(expression + ' => ' + sys.inspect( this ) );
+    //util.debug(expression + ' => ' + util.inspect( this ) );
 
 };
 
@@ -190,7 +190,7 @@ mixin(FilterExpression.prototype, {
                 return filter(p, arg, safety);
             } else {
                 // throw 'Cannot find filter';
-                sys.debug('Cannot find filter ' + c.name);
+                util.debug('Cannot find filter ' + c.name);
                 return p;
             }
         }, value);
@@ -249,17 +249,17 @@ mixin(Parser.prototype, {
         var token = this.token_list[0];
         var tag = null;
 
-        //sys.debug('' + this.indent++ + ':starting parsing with stoppers ' + stoppers.join(', '));
+        //util.debug('' + this.indent++ + ':starting parsing with stoppers ' + stoppers.join(', '));
 
         while (this.token_list.length) {
             if (stoppers.indexOf(this.token_list[0].type) > -1) {
-                //sys.debug('' + this.indent-- + ':parse done returning at ' + token[0] + ' (length: ' + node_list.length + ')');
+                //util.debug('' + this.indent-- + ':parse done returning at ' + token[0] + ' (length: ' + node_list.length + ')');
                 return node_list;
             }
 
             token = this.next_token();
 
-            //sys.debug('' + this.indent + ': ' + token);
+            //util.debug('' + this.indent + ': ' + token);
 
             tag = this.tags[token.type];
             if (tag && typeof tag === 'function') {
@@ -276,7 +276,7 @@ mixin(Parser.prototype, {
             throw new parser_error('Tag not found: ' + stoppers.join(', '));
         }
 
-        //sys.debug('' + this.indent-- + ':parse done returning end (length: ' + node_list.length + ')');
+        //util.debug('' + this.indent-- + ':parse done returning end (length: ' + node_list.length + ')');
 
         return node_list;
     },

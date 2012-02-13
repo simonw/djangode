@@ -1,8 +1,6 @@
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
 
-var sys = require('sys');
-
 /* Function: smart_split(s)
  *      Split a string by spaces, leaving qouted phrases together. Supports both
  *      single and double qoutes, and supports escaping strings qoutes with

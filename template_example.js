@@ -1,4 +1,4 @@
-var sys = require('sys'),
+var util = require('util'),
     dj = require('./djangode'),
     template_system = require('./template/template');
     template_loader = require('./template/loader');
@@ -39,7 +39,7 @@ var app = dj.makeApp([
     }],
 
     ['^/context$', function (req, res) {
-        dj.respond(res, sys.inspect(test_context), 'text/plain');
+        dj.respond(res, util.inspect(test_context), 'text/plain');
     }],
 
     ['^/text$', function (req, res) {

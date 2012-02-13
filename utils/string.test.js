@@ -1,4 +1,3 @@
-var sys = require('sys');
 var mixin = require('./mixin').mixin;
 
 mixin(GLOBAL, require('./test').dsl);

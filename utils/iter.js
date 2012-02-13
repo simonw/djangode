@@ -1,5 +1,3 @@
-var sys = require('sys');
-
 exports.reduce = function reduce(array, iter_callback, initial, result_callback) {
 
     var index = 0;

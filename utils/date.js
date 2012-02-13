@@ -1,5 +1,3 @@
-var sys = require('sys');
-
 // Internationalization strings
 var i18n = {
     'en-us': {

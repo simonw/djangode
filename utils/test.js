@@ -1,6 +1,6 @@
 /*jslint laxbreak: true, eqeqeq: true, undef: true, regexp: false */
 /*global require, process, exports */
-var sys = require('sys');
+var util = require('util');
 
 var AssertFailedException = function (msg) {
     this.message = msg;
@@ -90,7 +90,7 @@ exports.dsl = {
             var testcase = testcases[testcase_idx--];
 
             if (testcase) {
-                sys.puts('\n[Testcase: ' + testcase.name + ']');
+                util.puts('\n[Testcase: ' + testcase.name + ']');
 
                 (function run_tests() {
 
@@ -110,25 +110,25 @@ exports.dsl = {
                                 async_test_has_failed = true;
 
                                 if (error instanceof AssertFailedException) {
-                                    sys.puts(' [--] ' + test.name + ': failed. ' + error.message);
+                                    util.puts(' [--] ' + test.name + ': failed. ' + error.message);
                                     failed_cnt++;
                                 } else {
-                                    sys.print(' [!!] ' + test.name + ': error. ');
+                                    util.print(' [!!] ' + test.name + ': error. ');
                                     if (error.stack && error.type) {
-                                        sys.puts(error.type + '\n' +  error.stack);
+                                        util.puts(error.type + '\n' +  error.stack);
                                     } else {
-                                        sys.puts(JSON.stringify(error, 0, 2));
+                                        util.puts(JSON.stringify(error, 0, 2));
                                     }
                                     error_cnt++;
                                 }
 
                                 if (stop_on_error) {
-                                    sys.puts('stopping on first error');
+                                    util.puts('stopping on first error');
                                     testcase_idx = -1;
                                     idx = testcase.tests.length;
                                 }
                             } else {
-                                sys.puts(' [OK] ' + test.name + ': passed');
+                                util.puts(' [OK] ' + test.name + ': passed');
                             }
 
                             if (testcase.teardown) { testcase.teardown(context); }
@@ -144,13 +144,13 @@ exports.dsl = {
 
                     } else {
                         // no more tests
-                        sys.puts('----');
+                        util.puts('----');
                         process.nextTick(run_testcases);
                     }
                 })();
             } else {
                 // no more testcases
-                sys.puts('\nTotal: ' + count + ', Failures: ' + failed_cnt + ', Errors: ' + error_cnt + '');
+                util.puts('\nTotal: ' + count + ', Failures: ' + failed_cnt + ', Errors: ' + error_cnt + '');
             }
 
         })();
@@ -160,7 +160,7 @@ exports.dsl = {
         if (async_test_has_failed) { return; }
         if (!isEqual(actual, expected)) {
             var exception = new AssertFailedException(
-                '\nExpected: ' + sys.inspect(actual) + '\nActual: ' + sys.inspect(expected) + '\n'
+                '\nExpected: ' + util.inspect(actual) + '\nActual: ' + util.inspect(expected) + '\n'
             ); 
             if (callback) { callback(exception); } else { throw exception; }
         };
@@ -169,7 +169,7 @@ exports.dsl = {
     assertIsTrue: function (actual, callback) {
         if (async_test_has_failed) { return; }
         if (!actual) {
-            var exception = new AssertFailedException('\nExpected ' + sys.inspect(actual) + ' to be true\n'); 
+            var exception = new AssertFailedException('\nExpected ' + util.inspect(actual) + ' to be true\n'); 
             if (callback) { callback(exception); } else { throw exception; }
         }
     },
@@ -177,7 +177,7 @@ exports.dsl = {
     assertIsFalse: function (actual, callback) {
         if (async_test_has_failed) { return; }
         if (actual) {
-            var exception = new AssertFailedException('\nExpected ' + sys.inspect(actual) + ' to be false\n'); 
+            var exception = new AssertFailedException('\nExpected ' + util.inspect(actual) + ' to be false\n'); 
             if (callback) { callback(exception); } else { throw exception; }
         }
     },

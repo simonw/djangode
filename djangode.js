@@ -1,5 +1,5 @@
 var http = require('http'),
-    sys = require('sys'),
+    util = require('util'),
     fs = require('fs'),
     url = require('url'),
     querystring = require('querystring')
@@ -22,13 +22,14 @@ exports.serveFile = function(req, res, filename) {
             callback();
             return;
         }
-        sys.puts("loading " + filename + "...");
+        util.puts("loading " + filename + "...");
         fs.readFile(filename, encoding, function (error, data) {
             if (error) {
                 status = 404;
-                body = '404'
-                sys.puts("Error loading " + filename);
-                return callback();
+                body = '404';
+                util.puts("Error loading " + filename);
+                callback();
+                return;
             }
             body = data;
             headers = [
@@ -38,7 +39,7 @@ exports.serveFile = function(req, res, filename) {
                     : body.length
                 ]
             ];
-            sys.puts("static file " + filename + " loaded");
+            util.puts("static file " + filename + " loaded");
             callback();
         });
     }
@@ -47,12 +48,12 @@ exports.serveFile = function(req, res, filename) {
         res.write(body, encoding);
         res.close();
     });
-}
+};
 
 exports.serve = function(app, port) {
-    sys.puts('Server on http://127.0.0.1:' + port + '/');
+    util.puts('Server on http://127.0.0.1:' + port + '/');
     return http.createServer(app).listen(port);
-}
+};
 
 function respond(res, body, content_type, status) {
     content_type = content_type || 'text/html';
@@ -83,9 +84,9 @@ exports.extractPost = function(req, callback) {
     req.addListener('end', function() {
         callback(querystring.parse(url.parse('http://fake/?' + body).query));
     });
-}
+};
 
-var debuginfo = {}
+var debuginfo = {};
 exports.debuginfo = debuginfo;
 
 exports.makeApp = function(urls, options) {
@@ -104,10 +105,10 @@ exports.makeApp = function(urls, options) {
         var view = show_404;
         var args = [req, res];
         for (var pair, i = 0; pair = compiled[i]; i++) {
-            //sys.puts("Matching " + pair[0] + " against path " + path);
+            //util.puts("Matching " + pair[0] + " against path " + path);
             var match = pair[0](path);
             if (match) {
-                //sys.puts("  matched! " + match);
+                //util.puts("  matched! " + match);
                 // Add matched bits to args
                 match.slice(1).forEach(function(arg) {
                     args.push(arg);
@@ -122,7 +123,7 @@ exports.makeApp = function(urls, options) {
             debuginfo.last_e = e;
             show_500(req, res, e);
         }
-    }
+    };
     app.urls = {};
     urls.forEach(function (item) { app.urls[item[2]] = item[0]; });
     return app;
@@ -133,10 +134,10 @@ function default_show_404(req, res) {
         '<h1>404</h1>', 'text/html', 404
     );
 }
-exports.default_show_404 = default_show_404
+exports.default_show_404 = default_show_404;
 
 function default_show_500(req, res, e) {
-    var msg = ''
+    var msg = '';
     if ('stack' in e && 'type' in e) {
         msg = (
             '<p><strong>' + e.type + '</strong></p><pre>' + 
@@ -147,7 +148,7 @@ function default_show_500(req, res, e) {
     }
     respond(res, '<h1>500</h1>' + msg, 'text/html', 500);
 }
-exports.default_show_500 = default_show_500
+exports.default_show_500 = default_show_500;
 
 exports.mime = mime = {
     lookup : function(ext, fallback) {
