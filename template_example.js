@@ -57,7 +57,7 @@ var app = dj.makeApp([
             if (error) {
                 dj.default_show_500(req, res, error);
             } else {
-                dj.respond(res, result, 'text/plain');
+                dj.respond(res, result, 'text/html');
             }
         });
     }],

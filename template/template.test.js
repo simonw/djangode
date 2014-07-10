@@ -1,6 +1,6 @@
 var sys = require('sys');
-process.mixin(GLOBAL, require('../utils/test').dsl);
-process.mixin(GLOBAL, require('./template'));
+common.extend(GLOBAL, require('../utils/test').dsl);
+common.extend(GLOBAL, require('./template'));
 
 testcase('Test tokenizer');
     test('sanity test', function () {

@@ -6,8 +6,9 @@ var string_utils = require('../utils/string');
 var date_utils = require('../utils/date');
 var html = require('../utils/html');
 var iter = require('../utils/iter');
+var common = require('../utils/common');
 
-process.mixin(GLOBAL, require('../utils/tags'));
+common.extend(GLOBAL, require('../utils/tags'));
 
 /* TODO: Missing filters
 
@@ -325,7 +326,7 @@ var nodes = exports.nodes = {
             context.set('forloop', forloop);
 
             function inner(p, c, idx, list, next) {
-                process.mixin(forloop, {
+                common.extend(forloop, {
                     counter: idx + 1,
                     counter0: idx,
                     revcounter: list.length - idx,
@@ -544,7 +545,7 @@ var nodes = exports.nodes = {
 
     LoadNode: function (path, package) {
         return function (context, callback) {
-            process.mixin(context.filters, package.filters);
+            common.extend(context.filters, package.filters);
             callback(false, '');
         }
     },
@@ -816,7 +817,7 @@ var tags = exports.tags = {
         }
 
         var package = require(name);
-        process.mixin(parser.tags, package.tags);
+        common.extend(parser.tags, package.tags);
 
         return nodes.LoadNode(name, package);
     },

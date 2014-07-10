@@ -6,6 +6,7 @@ var fs = require('fs');
 var template_system = require('./template');
 
 var cache = {};
+var cacheMode = true;
 var template_path = '/tmp';
 
 
@@ -15,13 +16,18 @@ var template_path = '/tmp';
 var load = exports.load = function (name, callback) {
     if (!callback) { throw 'loader.load() must be called with a callback'; }
 
-    if (cache[name] != undefined) {
+    if (cacheMode && cache[name] != undefined) {
         callback(false, cache[name]);
     } else {
         fs.readFile(template_path + '/' + name, function (error, s) {
-            if (error) { callback(error); }
-            cache[name] = template_system.parse(s);
-            callback(false, cache[name]);
+            if (error) { 
+            	callback(error); 
+            }
+            else
+            {
+            	cache[name] = template_system.parse(s);
+            	callback(false, cache[name]);
+           	}
         });
     }
 };
@@ -34,6 +40,10 @@ exports.load_and_render = function (name, context, callback) {
             template.render(context, callback);
         }
     });
+};
+
+exports.disableCache = function () {
+    cacheMode = false;
 };
 
 exports.flush = function () {
